@@ -1,0 +1,33 @@
+{
+  "name": "oas3-modularize",
+  "version": "1.0.0",
+  "description": "A CLI tool to decompose a single OAS3 YAML file into modular files.",
+  "main": "oas3-modularize.js",
+  "bin": {
+    "oas3-modularize": "./oas3-modularize.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "redocly:build": "redocly bundle -o dist/openapi.yaml",
+    "redocly:validate": "redocly lint",
+    "redocly:serve": "redocly preview-docs",
+    "redocly:docs": "redocly build-docs"
+  },
+  "keywords": [
+    "oas3",
+    "openapi",
+    "swagger",
+    "modularize",
+    "cli",
+    "redocly"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "commander": "^12.1.0",
+    "js-yaml": "^4.1.0"
+  },
+  "devDependencies": {
+    "@redocly/cli": "^1.19.0"
+  }
+}

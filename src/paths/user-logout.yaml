@@ -1,0 +1,12 @@
+get:
+  tags:
+    - user
+  summary: Logs out current logged in user session.
+  description: Log user out of the system.
+  operationId: logoutUser
+  parameters: []
+  responses:
+    '200':
+      description: successful operation
+    default:
+      description: Unexpected error
