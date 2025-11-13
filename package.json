@@ -1,6 +1,6 @@
 {
   "name": "@apifactory/oas3-modularize",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "CLI para modularizar contratos OpenAPI 3, validarlos con Redocly, generar bundle y documentación Markdown.",
   "main": "bin/oas3-modularize.js",
   "bin": {
@@ -12,7 +12,6 @@
     "bundle": "oas3-modularize bundle",
     "docs": "oas3-modularize docs",
     "build:all": "oas3-modularize build-all --build ./openapi.yaml",
-    "lint:redocly": "redocly lint src/openapi.yaml || redocly lint openapi.yaml",
     "test": "echo \"No tests configured\" && exit 0"
   },
   "keywords": [
@@ -29,13 +28,12 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "chalk": "^4.1.2",
+    "chalk": "4.1.2",
     "commander": "12.1.0",
-    "inquirer": "^8.2.6",
-    "js-yaml": "4.1.0"
-  },
-  "devDependencies": {
+    "inquirer": "8.2.6",
+    "js-yaml": "4.1.0",
     "@redocly/cli": "1.19.0",
     "widdershins": "4.0.1"
-  }
+  },
+  "devDependencies": {}
 }

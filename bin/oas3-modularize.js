@@ -23,7 +23,6 @@ const { promisify } = require('util');
 const inquirerModule = require('inquirer');
 // Compatibilidad: inquirer v8 (CJS) y v9+ (ESM)
 const inquirer = inquirerModule.default || inquirerModule;
-
 const chalk = require('chalk');
 
 const execPromise = promisify(exec);
@@ -32,7 +31,10 @@ const execPromise = promisify(exec);
 // Configuración de rutas base
 // ---------------------------------------------------------------------------
 
-/** Directorio base donde se generará la estructura modular. */
+/**
+ * Directorio base donde se generará la estructura modular.
+ * Contendrá `openapi.yaml`, `components/` y `paths/`.
+ */
 const TARGET_DIR = 'src';
 
 /** Directorio de componentes: src/components */
@@ -41,15 +43,46 @@ const COMPONENTS_DIR = path.join(TARGET_DIR, 'components');
 /** Directorio de paths: src/paths */
 const PATHS_DIR = path.join(TARGET_DIR, 'paths');
 
-/** Archivo principal OpenAPI modularizado (entrypoint para Redocly). */
+/**
+ * Archivo principal OpenAPI modularizado (entrypoint para Redocly).
+ */
 const MAIN_FILE = path.join(TARGET_DIR, 'openapi.yaml');
 
-/** Directorio de salida para bundle final y documentación */
+/**
+ * Directorio de salida para bundle final y documentación.
+ */
 const DIST_DIR = 'dist';
 
 // ---------------------------------------------------------------------------
 // Utilidades generales
 // ---------------------------------------------------------------------------
+
+/**
+ * Devuelve la ruta absoluta al ejecutable ubicado en `node_modules/.bin`
+ * del propio paquete `@apifactory/oas3-modularize`.
+ *
+ * Esto permite que el CLI use SIEMPRE sus propias dependencias (Redocly,
+ * Widdershins), tanto si se instala localmente como globalmente.
+ *
+ * Estructura típica:
+ *   .../node_modules/@apifactory/oas3-modularize/bin/oas3-modularize.js  (__dirname)
+ *   .../node_modules/@apifactory/oas3-modularize/node_modules/.bin/*     (binarios)
+ *
+ * @param {string} baseName Nombre base del ejecutable (ej: 'redocly', 'widdershins').
+ * @returns {string} Ruta absoluta al ejecutable correspondiente.
+ */
+function getBinPath(baseName) {
+  // __dirname -> .../@apifactory/oas3-modularize/bin
+  // subimos un nivel -> .../@apifactory/oas3-modularize
+  const binDir = path.join(__dirname, '..', 'node_modules', '.bin');
+
+  let executableName = baseName;
+  if (process.platform === 'win32') {
+    executableName = `${baseName}.cmd`;
+  }
+
+  return path.join(binDir, executableName);
+}
 
 /**
  * Escribe contenido como YAML en una ruta específica.
@@ -72,9 +105,12 @@ function writeYamlFile(filePath, content) {
  * @returns {string} - Nombre de archivo YAML asociado a esa ruta.
  */
 function slugifyPath(routePath) {
-  let slug = routePath.replace(/\//g, '-');      // Reemplaza barras por guiones
-  slug = slug.replace(/[{}]/g, '').replace(/^-/, ''); // Elimina { } y guion inicial
-  if (slug === '') return 'root.yaml';          // Para la ruta '/'
+  // Reemplaza barras por guiones
+  let slug = routePath.replace(/\//g, '-');
+  // Elimina { } y guion inicial
+  slug = slug.replace(/[{}]/g, '').replace(/^-/, '');
+  // Para la ruta '/'
+  if (slug === '') return 'root.yaml';
   return `${slug}.yaml`;
 }
 
@@ -86,14 +122,14 @@ function slugifyPath(routePath) {
  * - `schemas`:
  *    "#/components/schemas/Foo" -> "#/Foo"
  * - otros componentes (requestBodies, responses, ...):
- *    "#/components/schemas/Foo" -> "./schemas.yaml#/Foo"
- *    "#/components/requestBodies/Bar" -> "./requestBodies.yaml#/Bar"
+ *    "#/components/schemas/Foo"        -> "./schemas.yaml#/Foo"
+ *    "#/components/requestBodies/Bar"  -> "./requestBodies.yaml#/Bar"
  * - `paths`:
  *    "#/components/schemas/Foo" -> "../openapi.yaml#/components/schemas/Foo"
  *
- * @param {object} content      Objeto con el contenido a corregir.
+ * @param {object} content       Objeto con el contenido a corregir.
  * @param {string} componentType Tipo ("schemas", "requestBodies", "paths", etc.).
- * @returns {object}            Objeto con referencias corregidas.
+ * @returns {object}             Objeto con referencias corregidas.
  */
 function fixRefs(content, componentType) {
   let contentString = JSON.stringify(content);
@@ -136,18 +172,30 @@ function fixRefs(content, componentType) {
 // ---------------------------------------------------------------------------
 
 /**
- * Ejecuta `redocly lint` sobre un archivo OpenAPI dado.
+ * Ejecuta `redocly lint` sobre un archivo OpenAPI dado utilizando
+ * el binario instalado como dependencia del propio CLI.
  *
  * @param {string} filePath - Ruta al archivo OAS principal a validar.
  */
 async function validateWithRedocly(filePath) {
   console.log(chalk.cyan('\n🔍 Validando con Redocly (lint)...'));
 
-  const binDir = path.join('node_modules', '.bin');
-  let executableName = 'redocly';
-  if (process.platform === 'win32') executableName = 'redocly.cmd';
+  const redoclyPath = getBinPath('redocly');
 
-  const redoclyPath = path.join(binDir, executableName);
+  if (!fs.existsSync(redoclyPath)) {
+    console.error(
+      chalk.red(
+        `\n✖ No se encontró el ejecutable de Redocly CLI en:\n   ${redoclyPath}\n`,
+      ),
+    );
+    console.error(
+      chalk.red(
+        'Verifica la instalación de @apifactory/oas3-modularize y sus dependencias (incluyendo @redocly/cli).',
+      ),
+    );
+    process.exit(1);
+  }
+
   const command = `${redoclyPath} lint ${filePath}`;
 
   try {
@@ -176,23 +224,11 @@ async function validateWithRedocly(filePath) {
     const validationReport = error.stdout || error.message;
 
     console.error(chalk.red('\n✖ Error crítico de validación en Redocly:\n'));
-    console.error(validationReport.trim());
-
-    if (
-      validationReport &&
-      (validationReport.includes('no se reconoce como un comando interno') ||
-        validationReport.toLowerCase().includes('not recognized as an internal'))
-    ) {
-      console.error(
-        chalk.red(
-          `\nNo se pudo ejecutar el binario de Redocly en: ${redoclyPath}. ¿Ejecutaste "npm install"?`,
-        ),
-      );
-    }
+    console.error((validationReport || '').trim());
 
     console.error(
       chalk.red(
-        `\nEl archivo modularizado ${filePath} NO es válido según Redocly. Corrige los errores y vuelve a intentarlo.`,
+        `\nEl archivo modularizado ${filePath} NO es válido según Redocly. Corrige los errores reportados y vuelve a intentarlo.`,
       ),
     );
     process.exit(1);
@@ -312,17 +348,31 @@ async function modularize(inputPath) {
  * Ejecuta `redocly bundle` sobre un archivo modular OpenAPI y escribe un bundle
  * único (normalmente en ./dist/openapi.yaml).
  *
+ * Usa las opciones:
+ *  - --dereferenced              (elimina $ref, expande todo)
+ *  - --remove-unused-components  (minifica eliminando componentes no usados)
+ *
  * @param {string} inputPath  Ruta al archivo principal modular (ej: src/openapi.yaml).
  * @param {string} outputPath Ruta al archivo bundle de salida (ej: dist/openapi.yaml).
  */
 async function bundleWithRedocly(inputPath, outputPath) {
   console.log(chalk.cyan('\n📦 Generando bundle con Redocly...'));
 
-  const binDir = path.join('node_modules', '.bin');
-  let executableName = 'redocly';
-  if (process.platform === 'win32') executableName = 'redocly.cmd';
+  const redoclyPath = getBinPath('redocly');
 
-  const redoclyPath = path.join(binDir, executableName);
+  if (!fs.existsSync(redoclyPath)) {
+    console.error(
+      chalk.red(
+        `\n✖ No se encontró el ejecutable de Redocly CLI en:\n   ${redoclyPath}\n`,
+      ),
+    );
+    console.error(
+      chalk.red(
+        'Verifica la instalación de @apifactory/oas3-modularize y sus dependencias (incluyendo @redocly/cli).',
+      ),
+    );
+    process.exit(1);
+  }
 
   fs.mkdirSync(path.dirname(outputPath), { recursive: true });
 
@@ -355,11 +405,21 @@ async function bundleWithRedocly(inputPath, outputPath) {
 async function generateMarkdownDocs(inputPath, outputPath) {
   console.log(chalk.cyan('\n📝 Generando documentación Markdown con Widdershins...'));
 
-  const binDir = path.join('node_modules', '.bin');
-  let cmdName = 'widdershins';
-  if (process.platform === 'win32') cmdName = 'widdershins.cmd';
+  const widdershinsPath = getBinPath('widdershins');
 
-  const widdershinsPath = path.join(binDir, cmdName);
+  if (!fs.existsSync(widdershinsPath)) {
+    console.error(
+      chalk.red(
+        `\n✖ No se encontró el ejecutable de Widdershins en:\n   ${widdershinsPath}\n`,
+      ),
+    );
+    console.error(
+      chalk.red(
+        'Verifica la instalación de @apifactory/oas3-modularize y sus dependencias (incluyendo widdershins).',
+      ),
+    );
+    process.exit(1);
+  }
 
   fs.mkdirSync(path.dirname(outputPath), { recursive: true });
 
@@ -413,7 +473,7 @@ async function showMenu() {
         {
           name: 'Salir',
           value: 'exit',
-        }
+        },
       ],
     },
   ]);
@@ -499,7 +559,6 @@ async function showMenu() {
 
   console.log(chalk.bold.green('\n✅ Operación finalizada.\n'));
 }
-
 
 // ---------------------------------------------------------------------------
 // Definición de CLI (Commander) + fallback al menú
