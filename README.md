@@ -1,105 +1,203 @@
+# oas3-modularize
 
-# 📦 oas3-modularize: Modularizador y Validador OpenAPI 3
+CLI para trabajar con especificaciones **OpenAPI 3 (OAS3)** de forma más productiva.  
+Convierte un archivo monolítico `.yaml` en una estructura modular lista para Redocly, genera bundle, valida y produce documentación Markdown.
 
-Esta herramienta es un script Node.js diseñado para tomar un único archivo de especificación OpenAPI 3 (OAS3) monolítico (por ejemplo, `swagger.yaml`) y descomponerlo automáticamente en una estructura modular de múltiples archivos.
+---
 
-La modularización utiliza referencias relativas (`$ref`) para dividir rutas (`paths`) y componentes (`components`) en archivos separados (dentro de un directorio `src`), lo que facilita la gestión y el mantenimiento de contratos API grandes.
+## 🚀 Características principales
 
-Además, el script utiliza **Redocly CLI** para validar la nueva estructura modular, asegurando que todas las referencias relativas sean correctas.
+- **Modularización automática**  
+  Convierte un archivo único OAS en:
+  ```
+  src/
+    openapi.yaml
+    components/*.yaml
+    paths/*.yaml
+  ```
 
-## ⚙️ Instalación
+- **Corrección inteligente de referencias `$ref`**
+  - Ajusta rutas relativas entre componentes
+  - Ajusta `$ref` internos de `schemas`, `requestBodies`, `responses`, etc.
+  - Ajusta referencias desde paths → openapi.yaml
 
-### 1. Requisitos
+- **Validación con Redocly CLI**
+  - Ejecuta `redocly lint` automáticamente
+  - Muestra advertencias y errores de forma amigable
 
-Asegúrate de tener instalado [Node.js](https://nodejs.org/ "null") (versión 14 o superior) y [pnpm](https://pnpm.io/ "null") como tu gestor de paquetes.
+- **Generación de bundle**
+  - Usa `redocly bundle`
+  - `--dereferenced`
+  - `--remove-unused-components`
 
-### 2. Inicializar el Proyecto
+- **Generación de documentación Markdown**
+  - Convierte OpenAPI → Markdown usando **Widdershins**
 
-Si aún no tienes un archivo `package.json`, inicializa tu proyecto:
+- **Menú interactivo (no más memorizar comandos)**
+  - Modularizar
+  - Bundle
+  - Docs
+  - Pipeline completo
 
-```
-pnpm init
+---
 
+## 📦 Instalación
 
-```
+Puedes usar este CLI **sin descargar el repositorio**, instalándolo directamente desde npm.
 
-### 3. Instalar Dependencias
+### 🔹 Instalar en un proyecto (recomendado)
 
-El script requiere las siguientes bibliotecas para su funcionamiento:
-
-1.  **`commander`**: Para manejar los argumentos de línea de comandos.
-    
-2.  **`js-yaml`**: Para leer y escribir archivos YAML.
-    
-3.  **`@redocly/cli`**: La herramienta de validación que asegura la integridad de la estructura.
-    
-
-Instala las dependencias de producción usando pnpm:
-
-```
-pnpm install commander js-yaml @redocly/cli
-
-
-```
-
-## 🚀 Uso del Script
-
-### Sintaxis
-
-El script `oas3-modularize.js` toma la ruta a tu archivo OAS3 monolítico como argumento obligatorio usando la opción `--build`.
-
-```
-node oas3-modularize.js --build <ruta/a/tu/archivo.yaml>
-
-
+```bash
+npm install @apifactory/oas3-modularize --save-dev
 ```
 
-### Ejemplo
+Ejecutar:
 
-Si tu archivo original se llama `example.yaml` y está en la raíz de tu proyecto, ejecútalo así:
-
-```
-node oas3-modularize.js --build "./example.yaml"
-
-
+```bash
+npx oas3-modularize
 ```
 
-### Flujo de Trabajo
+### 🔹 Instalar globalmente
 
-Al ejecutar el script, ocurrirá lo siguiente:
+```bash
+npm install -g @apifactory/oas3-modularize
+```
 
-1.  **Limpieza:** Si el directorio `src/` existe, será eliminado.
-    
-2.  **Generación:** Se crearán los directorios `src/`, `src/components/`, y `src/paths/`.
-    
-3.  **Descomposición:**
-    
-    -   Todos los objetos dentro de `components` se escribirán en archivos YAML separados dentro de `src/components/` (ej: `schemas.yaml`, `requestBodies.yaml`).
-        
-    -   Cada ruta individual se escribirá en su propio archivo YAML dentro de `src/paths/` (ej: `users-id.yaml`).
-        
-4.  **Referencias Fix:** Las referencias (`$ref`) en los archivos modulares se corregirán automáticamente para ser relativas (ej: de `# /components/schemas/Pet` a `./schemas.yaml#/Pet`).
-    
-5.  **Principal:** Se creará el archivo principal `src/openapi.yaml`, que solo contendrá referencias a los archivos modulares.
-    
-6.  **Validación:** Se ejecutará `pnpm redocly lint src/openapi.yaml` (o el equivalente de Node si estás usando `node oas3-modularize.js`) para asegurar que la nueva estructura modular sea válida según las reglas de OpenAPI y Redocly.
-    
+Ejecutar:
 
-## 📂 Estructura de Salida
+```bash
+oas3-modularize
+```
 
-El script generará la siguiente estructura de archivos dentro del directorio `src`:
+---
+
+## 🧩 Uso desde el menú interactivo (recomendado)
+
+Ejecuta el comando sin argumentos:
+
+```bash
+npx oas3-modularize
+```
+
+Verás un menú así:
+
+```
+🧩 oas3-modularize - Menú interactivo
+
+¿Qué quieres hacer?
+
+1) Modularizar archivo OpenAPI YAML
+2) Generar bundle con Redocly
+3) Generar documentación Markdown
+4) Ejecutar todo el pipeline
+Salir
+```
+
+---
+
+## 🛠 Uso mediante subcomandos
+
+### 1. Modularizar
+
+```bash
+oas3-modularize modularize --build ./openapi.yaml
+```
+
+Salida:
 
 ```
 src/
-├── openapi.yaml          <-- Archivo OAS principal (contiene solo $refs a paths y components)
-├── components/
-│   ├── schemas.yaml      <-- Todos los objetos de schemas
-│   ├── requestBodies.yaml<-- Todos los objetos de requestBodies
-│   └── ...
-└── paths/
-    ├── pet.yaml          <-- Objeto para la ruta /pet
-    ├── user-id.yaml      <-- Objeto para la ruta /user/{id}
-    └── ...
+  openapi.yaml
+  components/
+  paths/
+```
 
+### 2. Generar Bundle
+
+```bash
+oas3-modularize bundle \
+  --input src/openapi.yaml \
+  --output dist/openapi.yaml
+```
+
+### 3. Generar documentación Markdown
+
+```bash
+oas3-modularize docs \
+  --input dist/openapi.yaml \
+  --output dist/api.md
+```
+
+### 4. Pipeline completo
+
+```bash
+oas3-modularize build-all --build openapi.yaml
+```
+
+Incluye:
+
+1. Modularización → `src/`
+2. Bundle → `dist/openapi.yaml`
+3. Docs → `dist/api.md`
+
+---
+
+## 📁 Estructura generada
 
 ```
+src/
+  openapi.yaml
+  components/
+    schemas.yaml
+    requestBodies.yaml
+    responses.yaml
+    ...
+  paths/
+    users.yaml
+    users-id.yaml
+    ...
+dist/
+  openapi.yaml      (bundle final)
+  api.md            (docs Markdown)
+```
+
+---
+
+## ⚙ Requisitos
+
+- Node.js 16+ (recomendado: 18+)
+- `@redocly/cli` (instalado como devDependency)
+- `widdershins` (instalado como devDependency)
+
+---
+
+## 🧪 Scripts incluidos
+
+```bash
+npm run modularize
+npm run bundle
+npm run docs
+npm run build:all
+```
+
+---
+
+## 🤝 Contribuir
+
+1. Haz un fork del repositorio  
+2. Crea una rama con tu mejora  
+3. Haz un PR describiendo el cambio
+
+---
+
+## 📄 Licencia
+
+MIT License
+
+---
+
+## ✨ Autor
+
+**API Factory**  
+Herramientas modernas para el diseño, documentación y automatización de APIs.
+

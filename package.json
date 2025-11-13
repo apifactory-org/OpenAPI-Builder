@@ -1,17 +1,19 @@
 {
-  "name": "oas3-modularize",
+  "name": "@apifactory/oas3-modularize",
   "version": "1.0.0",
-  "description": "A CLI tool to decompose a single OAS3 YAML file into modular files.",
-  "main": "oas3-modularize.js",
+  "description": "CLI para modularizar contratos OpenAPI 3, validarlos con Redocly, generar bundle y documentación Markdown.",
+  "main": "bin/oas3-modularize.js",
   "bin": {
-    "oas3-modularize": "./oas3-modularize.js"
+    "oas3-modularize": "bin/oas3-modularize.js"
   },
+  "type": "commonjs",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "redocly:build": "redocly bundle -o dist/openapi.yaml",
-    "redocly:validate": "redocly lint",
-    "redocly:serve": "redocly preview-docs",
-    "redocly:docs": "redocly build-docs"
+    "modularize": "oas3-modularize modularize --build ./openapi.yaml",
+    "bundle": "oas3-modularize bundle",
+    "docs": "oas3-modularize docs",
+    "build:all": "oas3-modularize build-all --build ./openapi.yaml",
+    "lint:redocly": "redocly lint src/openapi.yaml || redocly lint openapi.yaml",
+    "test": "echo \"No tests configured\" && exit 0"
   },
   "keywords": [
     "oas3",
@@ -19,15 +21,21 @@
     "swagger",
     "modularize",
     "cli",
-    "redocly"
+    "redocly",
+    "widdershins",
+    "documentation",
+    "api"
   ],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "dependencies": {
-    "commander": "^12.1.0",
-    "js-yaml": "^4.1.0"
+    "chalk": "^4.1.2",
+    "commander": "12.1.0",
+    "inquirer": "^8.2.6",
+    "js-yaml": "4.1.0"
   },
   "devDependencies": {
-    "@redocly/cli": "^1.19.0"
+    "@redocly/cli": "1.19.0",
+    "widdershins": "4.0.1"
   }
 }

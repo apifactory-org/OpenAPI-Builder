@@ -1,0 +1,55 @@
+# ----------------------------------------
+# Archivos y carpetas que NO deben subirse a npm
+# ----------------------------------------
+
+# Dependencias
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# Archivos generados
+dist/
+coverage/
+tmp/
+temp/
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+
+# Configuración de IDEs
+.vscode/
+.idea/
+
+# Git
+.git/
+.gitignore
+
+# Archivos locales
+.env
+.env.*
+*.local
+
+# Paquetes
+*.tgz
+
+# Logs
+*.log
+
+# Documentos privados o auxiliares
+notes/
+tests/
+test/
+docs/
+
+# Si usas typescript (por si acaso)
+tsconfig.tsbuildinfo
+
+# Evita subir ejemplos
+examples/
+example/
+dist/
+
+# Evita subir binarios innecesarios
+bin/*.map
