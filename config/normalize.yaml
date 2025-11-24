@@ -1,0 +1,186 @@
+# ===================================================================
+#  Archivo de configuración: normalize.yaml
+# ===================================================================
+#  OBJETIVO:
+#  Definir REGLAS DE NORMALIZACIÓN sobre el documento OpenAPI 3.
+#  Aquí decides:
+#    - Orden de secciones (info, servers, paths, components, etc.)
+#    - Orden de propiedades dentro de cada path/operation/schema.
+#    - Estilo de nombres (camelCase, snake_case, etc.)
+#    - Limpieza de descripciones, espacios, saltos de línea.
+#
+#  IMPORTANTE:
+#  - Este archivo NO define cómo se divide en archivos (eso es modularize.yaml).
+#  - Este archivo define cómo debería verse el OAS "bonito" y consistente.
+# ===================================================================
+
+# -------------------------------------------------------------------
+# HABILITAR / DESHABILITAR NORMALIZACIÓN
+# -------------------------------------------------------------------
+normalization:
+  # Activa o desactiva totalmente la etapa de normalización.
+  enabled: true
+
+  # Modo de ejecución:
+  #  - "dry-run": solo reporta qué cambiaría, sin modificar archivos.
+  #  - "apply"  : aplica los cambios sobre los archivos YAML.
+  mode: "apply"
+
+  # Nivel de reporte:
+  #  - "summary" : solo un resumen de cambios.
+  #  - "detailed": lista detallada de cada cambio por sección/path.
+  reportLevel: "summary"
+
+# -------------------------------------------------------------------
+# ORDEN GLOBAL DEL DOCUMENTO OAS3
+# -------------------------------------------------------------------
+order:
+  # Orden de las secciones top-level en el documento OpenAPI.
+  # Las que no estén listadas se colocarán al final en el orden original.
+  openapiSections:
+    - "openapi"
+    - "info"
+    - "servers"
+    - "security"
+    - "tags"
+    - "externalDocs"
+    - "paths"
+    - "components"
+    - "x-bcp-api-type"      # Ejemplo de extension personalizada
+    - "x-bcp-api-id"        # Ejemplo de extension personalizada
+
+  # Orden de propiedades dentro de CADA operación (GET, POST, etc.).
+  # Claves no listadas se mantienen al final en su orden original.
+  operationKeys:
+    - "operationId"
+    - "summary"
+    - "description"
+    - "tags"
+    - "externalDocs"
+    - "deprecated"
+    - "security"
+    - "parameters"
+    - "requestBody"
+    - "responses"
+    - "callbacks"
+    - "servers"
+
+  # Orden de las claves dentro de cada schema en components.schemas.
+  schemaKeys:
+    - "title"
+    - "description"
+    - "type"
+    - "format"
+    - "required"
+    - "properties"
+    - "items"
+    - "enum"
+    - "allOf"
+    - "oneOf"
+    - "anyOf"
+    - "not"
+    - "additionalProperties"
+    - "example"
+    - "default"
+
+  # Orden de los elementos dentro de cada response.
+  responseKeys:
+    - "description"
+    - "headers"
+    - "content"
+    - "links"
+
+# -------------------------------------------------------------------
+# ESTILO DE NOMBRES (naming conventions)
+# -------------------------------------------------------------------
+naming:
+  # Convención para operationId:
+  #  - "keep"       : no cambia nada
+  #  - "camelCase"  : e.g. initiateAchOperations
+  #  - "snake_case" : e.g. initiate_ach_operations
+  operationId:
+    style: "keep"
+
+  # Convención para nombres de parámetros (headers, query, path, etc.).
+  parameters:
+    style: "keep"
+
+  # Convención para los nombres de schemas (componentes en components.schemas).
+  schemas:
+    style: "PascalCase"   # Ejemplo: Party, GenericMessage, ApiExceptionDetail
+
+  # Convención para tags (info.tags[].name).
+  tags:
+    style: "Title Case"   # Ejemplo: "ACH Operation Information"
+
+# -------------------------------------------------------------------
+# NORMALIZACIÓN DE TEXTOS (descriptions, summaries, etc.)
+# -------------------------------------------------------------------
+text:
+  # Normalizar espacios en blanco:
+  #  - true  : colapsa espacios múltiples, limpia espacios al inicio/fin.
+  #  - false : respeta tal cual.
+  trimWhitespace: true
+
+  # Normalizar saltos de línea:
+  #  - "keep"   : no tocar
+  #  - "unix"   : usar \n
+  #  - "single" : convertir todo a una sola línea (útil para descripciones cortas)
+  newlineStyle: "unix"
+
+  # En descriptions largas que vienen con ">\r\n..." y bullets,
+  # se puede intentar formatearlas a formato Markdown más limpio.
+  formatDescriptionsAsMarkdown: false
+
+  # Longitud máxima sugerida de summary. Si excede, solo se reporta, no se trunca.
+  summaryMaxLength: 120
+
+# -------------------------------------------------------------------
+# ENUMS Y VALORES CONSTANTES
+# -------------------------------------------------------------------
+enums:
+  # Normalizar el estilo de los valores del enum:
+  #  - "keep"       : no cambiar nada
+  #  - "UPPER_SNAKE": convierte a MAYÚSCULAS_CON_GUIONES
+  #  - "PascalCase" : cada palabra en mayúscula inicial
+  valueStyle: "keep"
+
+  # Ordenar los valores del enum alfabéticamente.
+  sortValues: true
+
+# -------------------------------------------------------------------
+# REGLAS DE LIMPIEZA (cleanup)
+# -------------------------------------------------------------------
+cleanup:
+  # Eliminar propiedades vacías (ej: description: "" o properties: {}).
+  removeEmptyProperties: true
+
+  # Eliminar campos x- personalizados que estén explícitamente listados aquí.
+  # Útil si quieres limpiar metadatos internos al preparar una versión pública.
+  removeExtensions:
+    enabled: false
+    keys:
+      - "x-internal-id"
+      - "x-generated-by"
+
+  # Eliminar tags que no se usen en ningún endpoint.
+  removeUnusedTags: true
+
+  # Eliminar securitySchemes que no se usen en ningún security.
+  removeUnusedSecuritySchemes: false
+
+# -------------------------------------------------------------------
+# VALIDACIONES DE ESTILO (solo reporte, no cambio de contenido)
+# -------------------------------------------------------------------
+styleChecks:
+  # Validar que todos los paths tengan operationId (GET/POST/etc.).
+  requireOperationId: true
+
+  # Validar que todas las responses tengan description.
+  requireResponseDescription: true
+
+  # Validar que todos los schemas tengan description.
+  requireSchemaDescription: false
+
+  # Validar que todos los parámetros tengan description.
+  requireParameterDescription: true

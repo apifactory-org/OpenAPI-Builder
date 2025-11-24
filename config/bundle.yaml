@@ -1,0 +1,81 @@
+# ===================================================================
+#  Archivo de configuración: ./config/bundle.yaml
+# ===================================================================
+#  OBJETIVO:
+#    Controla EXCLUSIVAMENTE cómo se genera el bundle final usando
+#    Redocly CLI a partir de un OpenAPI (modular o monolítico).
+#
+#  Este archivo es consumido por el comando:
+#    - oas3-modularize bundle
+#
+#  NOTA:
+#    - Aquí no se define cómo se modulariza el contrato, solo cómo se
+#      empaqueta en un único archivo (dist/openapi*.yaml).
+# ===================================================================
+
+# -------------------------------------------------------------------
+# RUTAS
+# -------------------------------------------------------------------
+paths:
+  # Ruta donde se genera el bundle final.
+  # Puedes usar .yaml, .yml, .min.yaml, etc.
+  bundleOutput: "./dist/openapi.min.yaml"
+
+  # (Opcional / según cómo diseñes el CLI)
+  # Si quisieras fijar un entrypoint por config, podrías añadir algo como:
+  # entrypoint: "./src/openapi.yaml"
+  #
+  # Pero actualmente tu CLI pregunta el entrypoint de forma interactiva,
+  # así que no se fuerza aquí.
+
+# -------------------------------------------------------------------
+# COMPORTAMIENTO GENERAL (BUNDLE)
+# -------------------------------------------------------------------
+behavior:
+  # Limpia la carpeta dist (bundle) antes de generar un nuevo bundle.
+  # true  => elimina TODO lo que haya en ./dist antes del bundle.
+  # false => deja archivos previos.
+  cleanDist: true
+
+# -------------------------------------------------------------------
+# OPCIONES DE BUNDLE (Redocly CLI)
+# -------------------------------------------------------------------
+bundle:
+  # Controla si Redocly debe "aplanar" todos los $ref en el bundle.
+  # - true  => agrega --dereferenced al comando `redocly bundle`.
+  #            El resultado NO tiene $ref hacia otros archivos, pero
+  #            el grafo puede tener ciclos y Redocly/js-yaml usarán
+  #            anchors YAML (&ref_1, *ref_1) para representarlos.
+  # - false => conserva los $ref internos en el bundle. El grafo es
+  #            menos propenso a tener ciclos y, en general, es más
+  #            fácil reescribir el YAML sin anchors con js-yaml.
+  dereference: false
+
+  # Elimina componentes no usados del bundle final.
+  # - true  => Redocly agrega --remove-unused-components
+  #           (limpia componentes que no se referencian desde paths).
+  # - false => mantiene todos los components aunque no se usen.
+  removeUnusedComponents: true
+
+  # Intenta inyectar automáticamente el campo `format` en algunos tipos.
+  # - true  => Redocly agrega --inject-format (puede enriquecer algunos tipos).
+  # - false => no se modifica el format.
+  injectFormat: false
+
+  # Controla la validación de reglas de Redocly durante el bundle.
+  # - true  => se validan reglas normalmente (buena práctica en CI/CD).
+  # - false => se agrega --skip-rule=all y NO se aplican reglas de linter.
+  validate: true
+
+  # NOTAS SOBRE ANCHORS YAML:
+  # - Los anchors (&ref_1, *ref_1) no son algo "tuyo", los genera el
+  #   serializer YAML cuando el grafo tiene objetos compartidos o
+  #   referencias circulares.
+  #
+  # - Si `dereference: true`, es más probable que Redocly genere ciclos
+  #   internos (por la expansión de $ref), y que la CLI NO pueda
+  #   reescribir el bundle sin anchors usando js-yaml con noRefs:true.
+  #
+  # - Si tu prioridad es la COMPATIBILIDAD y evitar anchors en el bundle,
+  #   suele preferirse `dereference: false` y dejar que el bundle conserve
+  #   sus $ref internos (siempre que tus paths/components estén bien conectados).

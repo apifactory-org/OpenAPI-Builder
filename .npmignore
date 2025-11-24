@@ -13,6 +13,7 @@ dist/
 coverage/
 tmp/
 temp/
+api/
 
 # Archivos del sistema
 .DS_Store

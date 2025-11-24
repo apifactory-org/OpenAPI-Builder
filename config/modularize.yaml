@@ -1,0 +1,103 @@
+# ===================================================================
+#  Archivo de configuración: ./config/modularize.yaml
+# ===================================================================
+#  OBJETIVO:
+#    Controla EXCLUSIVAMENTE cómo se modulariza el OAS3 en archivos.
+#    NO modifica contenido, NO ordena propiedades, NO normaliza nada.
+#    Solo define la estructura física del proyecto (src/paths, src/components, etc.).
+#
+#  Este archivo es consumido por el comando:
+#    - oas3-modularize modularize
+# ===================================================================
+
+# -------------------------------------------------------------------
+# RUTAS
+# -------------------------------------------------------------------
+paths:
+  # Ruta del archivo OpenAPI principal MONOLÍTICO a modularizar.
+  # Es el contrato "grande", normalmente en /api.
+  input: "./api/business-ach-operation-information.yaml"
+
+  # Carpeta donde se generará la estructura modular:
+  #   - <modularizedOutput>/openapi.yaml
+  #   - <modularizedOutput>/components/*.yaml
+  #   - <modularizedOutput>/paths/*.yaml
+  modularizedOutput: "./src"
+
+  # Carpeta donde se generará documentación adicional (Markdown, etc.)
+  # La usa el comando de docs, no el de modularización.
+  docsOutput: "./docs"
+
+# -------------------------------------------------------------------
+# COMPORTAMIENTO GENERAL (MODULARIZACIÓN)
+# -------------------------------------------------------------------
+behavior:
+  # Limpia la carpeta modularizada antes de generar nuevos archivos.
+  # true  => elimina TODO lo que haya en ./src antes de modularizar.
+  # false => deja archivos previos (no recomendado en la mayoría de casos).
+  cleanModularizedOutput: true
+
+  # Ajusta referencias internas ($ref) después de modularizar.
+  # true  => aplica fixRefs para recalcular rutas de $ref cuando se separan archivos.
+  # false => NO toca los $ref; solo separa físicamente los archivos.
+  fixRefs: true
+
+  # Genera (o no) un archivo "index.yaml" en cada carpeta modular.
+  # Este índice podría listar y re-exportar las piezas del módulo
+  # (por ejemplo, index.yaml en components/ que reúna subarchivos).
+  # Actualmente tu lógica puede no usarlo aún, pero se mantiene la opción.
+  createIndexFiles: false
+
+# -------------------------------------------------------------------
+# OPCIONES DE MODULARIZACIÓN
+# -------------------------------------------------------------------
+modularization:
+  # Divide cada endpoint en su propio archivo bajo /paths
+  splitPaths: true
+
+  # Divide cada esquema dentro de components.schemas en archivos individuales
+  splitSchemas: true
+
+  # Divide parámetros de components.parameters en archivos separados
+  splitParameters: true
+
+  # Divide respuestas en components.responses
+  splitResponses: true
+
+  # Divide requestBodies en components.requestBodies
+  splitRequestBodies: true
+
+  # Divide headers en components.headers
+  splitHeaders: true
+
+  # Divide securitySchemes en components.securitySchemes
+  splitSecuritySchemes: true
+
+  # Si un schema o response no está siendo referenciado, decidir si debe exportarse igual:
+  #   true  => incluye todo, aunque no se use.
+  #   false => exporta solo lo referenciado (más limpio, pero más agresivo).
+  includeUnusedComponents: true
+
+# -------------------------------------------------------------------
+# OPCIONES AVANZADAS (ESTRUCTURA FÍSICA)
+# -------------------------------------------------------------------
+advanced:
+  # Convierte rutas en nombres de archivo válidos
+  # Ej: "/users/{id}" → "users-id.yaml"
+  slugifyPaths: true
+
+  # Prefijo opcional para nombres de archivo generados (útil para proyectos multi API)
+  # Ej: "payments-" produciría "payments-users-id.yaml", etc.
+  filenamePrefix: ""
+
+  # Extensión con la que se generan los archivos modularizados:
+  #   - openapi.yaml
+  #   - components/*.yaml
+  #   - paths/*.yaml
+  fileExtension: ".yaml"
+
+  # Si alguna sección está vacía (por ejemplo, no hay headers), eliminar su carpeta.
+  removeEmptyFolders: true
+
+  # Forzar estilo consistente en archivos generados (indentación YAML).
+  indent: 2

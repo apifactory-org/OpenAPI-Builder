@@ -1,0 +1,89 @@
+# =============================================================================
+# oas3-modularize – Logging Configuration
+#
+# Este archivo controla cómo el CLI registra información en consola y/o archivos.
+# Es completamente agnóstico: nada está ligado a Redocly, Swagger ni proveedores.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Nivel de logging global
+# -----------------------------------------------------------------------------
+# Opciones comunes:
+#   - "silent" → no se imprime nada
+#   - "error"  → solo errores
+#   - "warn"   → errores + advertencias
+#   - "info"   → modo recomendado para uso normal
+#   - "debug"  → imprime detalles adicionales (flujo interno)
+#   - "trace"  → nivel extremadamente detallado (stack traces completos)
+level: "info"
+
+# -----------------------------------------------------------------------------
+# Formato del log en consola
+# -----------------------------------------------------------------------------
+console:
+  enabled: true                   # false → no imprimir nada en consola
+  colorize: true                  # Colores ANSI para mejor lectura
+  timestamp: true                 # Añade fecha y hora a los logs
+  # format recibe tokens interpretados por tu CLI:
+  #   {timestamp} • {level} • {message}
+  format: "[{timestamp}] {level}: {message}"
+
+# -----------------------------------------------------------------------------
+# Salida a archivo
+# -----------------------------------------------------------------------------
+file:
+  enabled: false                  # true → habilita logs en archivo
+  path: "./logs/oas3-modularize.log"   # ruta del archivo de log
+  maxSize: "5MB"                  # rotación automática al superar este tamaño
+  maxFiles: 5                     # mantiene los últimos N archivos
+  timestamp: true                 # agregar timestamps también en archivo
+  json: false                     # puede ser pretty log o JSON estructurado
+
+# -----------------------------------------------------------------------------
+# Logging avanzado para desarrolladores
+# -----------------------------------------------------------------------------
+debug:
+  showStackTraces: true           # añade stack trace cuando ocurre un error
+  showExecutionTime: true         # muestra tiempos de ejecución de tareas internas
+  showCommandOutput: false        # imprime stdout/stderr de comandos internos
+
+# -----------------------------------------------------------------------------
+# Logging por categorías (sub-sistemas)
+# -----------------------------------------------------------------------------
+# Esto permite ajustar el comportamiento de partes específicas del CLI.
+# Si una categoría no define nivel, hereda el nivel global.
+categories:
+  modularizer:
+    level: "info"                 # override local
+    color: "cyan"
+
+  bundler:
+    level: "warn"
+    color: "yellow"
+
+  validator:
+    level: "debug"
+    color: "magenta"
+
+  normalizer:
+    level: "info"
+    color: "blue"
+
+  config-loader:
+    level: "debug"
+    color: "green"
+
+# -----------------------------------------------------------------------------
+# Eventos que pueden disparar logs adicionales
+# -----------------------------------------------------------------------------
+events:
+  logConfigOnStart: true          # imprime qué configuración de logging se cargó
+  logConfigPath: true             # muestra de dónde se cargaron los archivos YAML
+  logExecutionSummary: true       # imprime un resumen al terminar (tiempos/errores)
+  logUsedCommands: true           # muestra qué comandos fueron ejecutados internamente
+
+# -----------------------------------------------------------------------------
+# Modo silencioso (override global)
+# -----------------------------------------------------------------------------
+# Si se habilita, anula todo lo demás.
+silentMode: false

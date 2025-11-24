@@ -1,0 +1,307 @@
+# =============================================================================
+# oas3-modularize – Linter configuration (agnóstico)
+#
+# Este archivo define REGLAS de validación que tu CLI puede aplicar sobre
+# un documento OpenAPI 3 (OAS3).
+#
+# NOTA: Este archivo NO es específico de ningún proveedor ni API real.
+#       Los ejemplos usan nombres genéricos como "Customer Accounts API".
+# =============================================================================
+
+# Versión del formato de configuración del linter (por si evoluciona en el futuro).
+version: 1
+
+# -------------------------------------------------------------------------
+# Severidades por defecto
+# -------------------------------------------------------------------------
+# Puedes usar estos valores en las reglas:
+#   - error  → rompe el pipeline (exit code != 0)
+#   - warn   → muestra advertencia pero no rompe el build
+#   - info   → solo informativo
+severityDefaults:
+  error: "error"
+  warn: "warn"
+  info: "info"
+
+# -------------------------------------------------------------------------
+# Configuración de salida del linter
+# -------------------------------------------------------------------------
+output:
+  format: "pretty"           # pretty | json | compact
+  showPassed: false          # true → mostrar también reglas que pasan
+  maxIssues: 200             # límite máximo de issues que se reportarán
+
+# -------------------------------------------------------------------------
+# Reglas
+#
+# Convención para "target":
+#   - "info.title"                       → campo concreto
+#   - "paths.*.*.summary"                → summary de cada operación (get, post, etc.)
+#   - "paths.*.parameters[].name"        → nombre de cada parámetro
+#   - "components.schemas.*.description" → descripción de cada schema
+#
+# type:
+#   - string | number | integer | boolean | object | array | any
+#
+# Cada regla puede tener:
+#   - required: true/false
+#   - minLength / maxLength (strings)
+#   - pattern (regex para strings)
+#   - min / max (números)
+#   - enumPattern (regex para cada valor de enum)
+#   - notEmpty: true (para objetos/arrays)
+#   - allowedValues (para enums simples)
+#   - message: mensaje al fallar
+#   - exampleValid / exampleInvalid
+# -------------------------------------------------------------------------
+rules:
+
+  # ======================================================================
+  # 1. STRINGS IMPORTANTES A NIVEL GLOBAL
+  # ======================================================================
+
+  # 1.1 info.title: obligatorio, legible, sin ser demasiado corto
+  - id: "info-title-required"
+    description: "El campo info.title debe existir y ser una cadena descriptiva."
+    target: "info.title"
+    type: "string"
+    required: true
+    minLength: 10
+    maxLength: 80
+    severity: "error"
+    message: "info.title debe existir y tener entre 10 y 80 caracteres."
+    exampleValid: "Customer Accounts API"
+    exampleInvalid: "API"
+
+  # 1.2 info.version: debe seguir semver básico (X.Y.Z)
+  - id: "info-version-semver"
+    description: "La versión de la API debe seguir un formato semántico mayor.menor.parche."
+    target: "info.version"
+    type: "string"
+    required: true
+    pattern: "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    severity: "error"
+    message: "info.version debe seguir el formato semántico: mayor.menor.parche (por ejemplo 1.0.0)."
+    exampleValid: "1.2.3"
+    exampleInvalid: "v1"
+
+  # 1.3 info.description: recomendable y con una longitud aceptable
+  - id: "info-description-length"
+    description: "La descripción de la API debería existir y ser suficientemente descriptiva."
+    target: "info.description"
+    type: "string"
+    required: false          # puedes ponerlo en true si quieres forzarlo
+    minLength: 20
+    maxLength: 400
+    severity: "warn"
+    message: "info.description debería tener entre 20 y 400 caracteres."
+    exampleValid: "API para gestionar cuentas de clientes, incluyendo creación, consulta y cierre."
+    exampleInvalid: "API de cuentas."
+
+  # ======================================================================
+  # 2. OPERACIONES (paths.*.*)
+  # ======================================================================
+
+  # 2.1 summary de cada operación: obligatorio, corto y en modo frase
+  - id: "operation-summary-style"
+    description: "Cada operación debe tener un summary corto en modo frase."
+    target: "paths.*.*.summary"
+    type: "string"
+    required: true
+    minLength: 10
+    maxLength: 100
+    # Empieza en mayúscula y sin punto final obligatorio (pero lo puedes añadir)
+    pattern: "^[A-Z].*"
+    severity: "error"
+    message: "Cada operación debe tener un summary descriptivo que comience en mayúscula."
+    exampleValid: "Obtiene los detalles de la cuenta."
+    exampleInvalid: "obtiene los detalles de la cuenta"
+
+  # 2.2 description de cada operación: recomendable y más extensa que el summary
+  - id: "operation-description-length"
+    description: "Cada operación debería tener una descripción más extensa que el summary."
+    target: "paths.*.*.description"
+    type: "string"
+    required: false
+    minLength: 20
+    maxLength: 800
+    severity: "warn"
+    message: "La descripción de la operación debería explicar el propósito de forma detallada."
+    exampleValid: "Este endpoint recupera la información detallada de una cuenta a partir de su identificador único."
+
+  # ======================================================================
+  # 3. PARÁMETROS (path, query, header)
+  # ======================================================================
+
+  # 3.1 Nombre de parámetros: lowerCamelCase por convención
+  - id: "parameter-name-lowerCamelCase"
+    description: "Los parámetros deberían seguir lowerCamelCase."
+    target: "paths.*.*.parameters[].name"
+    type: "string"
+    required: true
+    pattern: "^[a-z][a-zA-Z0-9]*$"
+    severity: "warn"
+    message: "El nombre del parámetro debería usar lowerCamelCase (por ejemplo: accountId, pageSize)."
+    exampleValid: "accountId"
+    exampleInvalid: "account_id"
+
+  # 3.2 Parámetros: description obligatoria
+  - id: "parameter-description-required"
+    description: "Cada parámetro debería tener una descripción clara."
+    target: "paths.*.*.parameters[].description"
+    type: "string"
+    required: true
+    minLength: 10
+    severity: "error"
+    message: "Cada parámetro debe incluir una descripción clara de su propósito."
+    exampleValid: "Identificador único de la cuenta del cliente."
+
+  # 3.3 Parámetro típico `limit`: entero entre 1 y 100
+  - id: "parameter-limit-range"
+    description: "El parámetro limit debe ser un entero entre 1 y 100 cuando exista."
+    target: "paths.*.*.parameters[?name=='limit'].schema"
+    type: "integer"
+    required: false
+    min: 1
+    max: 100
+    severity: "warn"
+    message: "El parámetro limit debería estar acotado entre 1 y 100."
+    exampleValid: 50
+    exampleInvalid: 1000
+
+  # ======================================================================
+  # 4. RESPONSE SCHEMAS (components.schemas / responses)
+  # ======================================================================
+
+  # 4.1 Cada schema debe tener descripción
+  - id: "schema-description-required"
+    description: "Cada esquema en components.schemas debería describir el concepto que modela."
+    target: "components.schemas.*.description"
+    type: "string"
+    required: true
+    minLength: 15
+    severity: "error"
+    message: "Cada schema debe tener una descripción mínima de 15 caracteres."
+    exampleValid: "Representa la información principal de la cuenta de un cliente."
+
+  # 4.2 Propiedad id de los recursos: string no vacía
+  - id: "resource-id-string"
+    description: "Las propiedades 'id' en esquemas de recursos deberían ser string no vacía."
+    target: "components.schemas.*.properties.id"
+    type: "string"
+    required: false
+    minLength: 1
+    severity: "warn"
+    message: "La propiedad id debería ser una cadena no vacía."
+    exampleValid: "acc-123456"
+
+  # 4.3 totalItems o totalCount: entero >= 0
+  - id: "pagination-total-non-negative"
+    description: "Los campos totalItems/totalCount deben ser enteros no negativos."
+    target: "components.schemas.*.properties.(totalItems|totalCount)"
+    type: "integer"
+    required: false
+    min: 0
+    severity: "error"
+    message: "Los campos totalItems/totalCount deben ser enteros mayores o iguales a 0."
+    exampleValid: 42
+    exampleInvalid: -1
+
+  # ======================================================================
+  # 5. ENUMS
+  # ======================================================================
+
+  # 5.1 Valores de enum en UPPER_SNAKE_CASE (estilo constante)
+  - id: "enum-uppercase-snake"
+    description: "Los valores de enum deberían seguir UPPER_SNAKE_CASE."
+    target: "components.schemas.*.enum[]"
+    type: "string"
+    required: false
+    enumPattern: "^[A-Z][A-Z0-9_]*$"
+    severity: "warn"
+    message: "Los valores del enum deberían usar UPPER_SNAKE_CASE (por ejemplo: PENDING_APPROVAL)."
+    exampleValid: "PENDING_APPROVAL"
+    exampleInvalid: "PendingApproval"
+
+  # ======================================================================
+  # 6. OBJETOS Y ARRAYS
+  # ======================================================================
+
+  # 6.1 Arrays: se recomienda especificar items y no dejar arrays genéricos
+  - id: "array-items-required"
+    description: "Cada array debería definir el esquema de items."
+    target: "components.schemas.*.properties.*"
+    type: "array"
+    required: false
+    notEmpty: false               # el array puede estar vacío, pero su definición no
+    requireItemsSchema: true      # bandera que tu CLI puede interpretar
+    severity: "warn"
+    message: "Los arrays deben definir la propiedad 'items' con un esquema concreto."
+    exampleValid:
+      type: array
+      items:
+        $ref: "#/components/schemas/Account"
+
+  # 6.2 Objetos de respuesta de error: deben tener al menos code y message
+  - id: "error-schema-minimal-shape"
+    description: "Los esquemas de error deben incluir como mínimo code y message."
+    target: "components.schemas.*"
+    type: "object"
+    required: false
+    ifNameMatches: ".*Error$"     # tu CLI puede usarlo para filtrar (ej: ValidationError, ApiError)
+    requiredProperties:
+      - "code"
+      - "message"
+    severity: "error"
+    message: "Los esquemas de error deben definir al menos 'code' y 'message'."
+    exampleValid:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+
+  # ======================================================================
+  # 7. ESTRUCTURA GENERAL DE OAS
+  # ======================================================================
+
+  # 7.1 Campo openapi obligatorio y en versión 3.x
+  - id: "openapi-version-3"
+    description: "El documento debe ser OpenAPI 3.x."
+    target: "openapi"
+    type: "string"
+    required: true
+    pattern: "^3\\.0\\.[0-9]+$"
+    severity: "error"
+    message: "El campo 'openapi' debe estar presente y ser 3.0.x (por ejemplo 3.0.1)."
+    exampleValid: "3.0.1"
+
+  # 7.2 Evitar rutas con barra final (convención)
+  - id: "path-no-trailing-slash"
+    description: "Las rutas no deberían terminar en barra '/'."
+    target: "paths.*"
+    type: "any"
+    required: true
+    forbidTrailingSlash: true     # bandera que tu CLI puede interpretar
+    severity: "warn"
+    message: "Evita usar una barra '/' al final de la ruta (por ejemplo: usa /accounts en vez de /accounts/)."
+    exampleValid: "/accounts/{accountId}"
+    exampleInvalid: "/accounts/{accountId}/"
+
+  # ======================================================================
+  # 8. SEGURIDAD
+  # ======================================================================
+
+  # 8.1 Toda operación debe declarar al menos un esquema de seguridad (si hay securitySchemes)
+  - id: "operation-security-required"
+    description: "Si existen esquemas de seguridad globales, cada operación debería declarar security."
+    target: "paths.*.*.security"
+    type: "array"
+    requiredIf:
+      components.securitySchemes: true   # pseudo-clave: si hay securitySchemes definidos
+    severity: "warn"
+    message: "Cada operación debería declarar explícitamente sus requisitos de seguridad."
+    exampleValid:
+      - bearerAuth: []
+

@@ -44,6 +44,7 @@ coverage/
 build/
 example/
 examples/
+api/
 
 # ----------------------------------------
 # oas3-modularize Output
