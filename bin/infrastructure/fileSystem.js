@@ -6,12 +6,28 @@ const chalk = require('chalk');
 const { loadAllConfigs } = require('./configLoader');
 
 // -------------------------------------------------------------
-// Carga de configuración
+// Carga de configuración (tolerante a ausencia o null)
 // -------------------------------------------------------------
-const { logging = {}, modularize = {} } = loadAllConfigs();
-const logLevel = logging.level || 'info';
-const logPrefix = logging.prefix || '[fs]';
+const allConfigs = loadAllConfigs() || {};
 
+// Normalización segura
+const loggingConfig =
+  allConfigs.logging && typeof allConfigs.logging === 'object'
+    ? allConfigs.logging
+    : {};
+
+const modularizeConfig =
+  allConfigs.modularize && typeof allConfigs.modularize === 'object'
+    ? allConfigs.modularize
+    : {};
+
+// Valores con fallback seguro
+const logLevel = loggingConfig.level || 'info';
+const logPrefix = loggingConfig.prefix || '[fs]';
+
+// -------------------------------------------------------------
+// LOGGER INTERNO
+// -------------------------------------------------------------
 function log(msg, level = 'info') {
   const levels = ['silent', 'error', 'warn', 'info', 'debug'];
   const idx = levels.indexOf(logLevel);
