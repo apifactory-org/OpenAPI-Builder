@@ -8,6 +8,7 @@ const yaml = require("js-yaml");
 const CONFIG_FILES = {
   modularize: "config/modularize.yaml",
   bundle: "config/bundle.yaml",
+  swagger2: "config/swagger2.yaml",          // <-- 🔥 NUEVO
   normalize: "config/normalize.yaml",
   linter: "config/linter.yaml",
   logging: "config/logging.yaml",
@@ -32,8 +33,6 @@ function resolveConfigPath(relativePath) {
   }
 
   // 2) Carpeta raíz del paquete CLI
-  // Este archivo está en: bin/infrastructure/configLoader.js
-  // → raíz del paquete = dos niveles arriba
   const moduleRoot = path.resolve(__dirname, "..", "..");
   const fromModule = path.resolve(moduleRoot, relativePath);
   if (fs.existsSync(fromModule)) {
@@ -68,6 +67,7 @@ function loadAllConfigs() {
   return {
     modularize: loadYamlConfig(CONFIG_FILES.modularize),
     bundle: loadYamlConfig(CONFIG_FILES.bundle),
+    swagger2: loadYamlConfig(CONFIG_FILES.swagger2),   // <-- 🔥 NUEVO
     normalize: loadYamlConfig(CONFIG_FILES.normalize),
     linter: loadYamlConfig(CONFIG_FILES.linter),
     logging: loadYamlConfig(CONFIG_FILES.logging),

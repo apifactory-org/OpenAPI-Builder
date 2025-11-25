@@ -1,0 +1,40 @@
+# ===================================================================
+#  Archivo de configuración: ./config/swagger2.yaml
+# ===================================================================
+#  OBJETIVO:
+#  Controlar la conversión (downgrade) desde OpenAPI 3.x → Swagger 2.0.
+#
+#  Este archivo SOLO define rutas de entrada y salida.
+#  No modifica contenido, no valida reglas y no afecta a modularización
+#  ni a bundle.
+#
+#  Este archivo es consumido por el comando:
+#     - CLI: opción "Downgradear OpenAPI → Swagger2" (menú interactivo)
+#     - Script: bin/application/downgradeSwagger2.js
+# ===================================================================
+
+
+# -------------------------------------------------------------------
+# RUTAS
+# -------------------------------------------------------------------
+paths:
+  # Bundle OpenAPI 3.x de entrada para convertir a Swagger 2.0
+  # Este debe ser el resultante de oas3-modularize bundle
+  #
+  # EJEMPLOS:
+  #   "./dist/openapi.yaml"
+  #   "./dist/openapi.min.yaml"
+  #
+  # Obligatorio.
+  input: "./dist/openapi.min.yaml"
+
+  # Ruta de salida donde se generará el Swagger 2.0 final.
+  # La CLI sugiere automáticamente el nombre cambiando la extensión
+  # a `.swagger2.yaml`, pero aquí puedes fijar una ruta alternativa.
+  #
+  # EJEMPLOS:
+  #   "./dist/openapi.swagger2.yaml"
+  #   "./dist/legacy/swagger2.yaml"
+  #
+  # Obligatorio.
+  output: "./dist/openapi.swagger2.yaml"
