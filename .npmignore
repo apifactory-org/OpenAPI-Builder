@@ -51,6 +51,7 @@ tsconfig.tsbuildinfo
 examples/
 example/
 dist/
+src/
 
 # Evita subir binarios innecesarios
 bin/*.map

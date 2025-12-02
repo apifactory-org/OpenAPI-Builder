@@ -26,13 +26,13 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "chalk": "4.1.2",
+    "@redocly/cli": "1.19.0",
+    "api-spec-converter": "2.12.0",
+    "chalk": "^4.1.2",
     "commander": "12.1.0",
     "inquirer": "8.2.6",
     "js-yaml": "4.1.0",
-    "@redocly/cli": "1.19.0",
-    "widdershins": "4.0.1",
-    "api-spec-converter": "2.12.0"
-  },
-  "devDependencies": {}
+    "prompts": "^2.4.2",
+    "widdershins": "4.0.1"
+  }
 }
