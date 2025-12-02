@@ -4,13 +4,13 @@
   "description": "CLI para trabajar con contratos OpenAPI 3: modularizar, generar bundle, documentación Markdown y convertir a Swagger 2.0.",
   "type": "commonjs",
   "bin": {
-    "openapi-builder": "bin/oas3-modularize.js"
+    "openapi-builder": "bin/main.js"
   },
   "scripts": {
-    "modularize": "node bin/oas3-modularize.js modularize",
-    "bundle": "node bin/oas3-modularize.js bundle",
-    "docs": "node bin/oas3-modularize.js docs",
-    "swagger2": "node bin/oas3-modularize.js swagger2"
+    "modularize": "node bin/main.js modularize",
+    "bundle": "node bin/main.js bundle",
+    "docs": "node bin/main.js docs",
+    "swagger2": "node bin/main.js swagger2"
   },
   "keywords": [
     "oas3",
