@@ -8,7 +8,11 @@ const { readYamlFile, writeYamlFile } = require('../infrastructure/yamlUtils');
 const { removeDirIfExists, ensureDir, fileExists } = require('../infrastructure/fileSystem');
 const { slugifyPath } = require('../core/slugifyPath');
 const { fixRefs } = require('../core/fixRefs');
-const { applyNamingConvention } = require('../core/namingConventions');
+const {
+  applyNamingConvention,
+  generateComponentFilename,
+  sanitizeComponentName,
+} = require('../core/namingConventions');
 const { validateWithRedocly } = require('./validate');
 const { loadAllConfigs } = require('../infrastructure/configLoader');
 
@@ -31,12 +35,12 @@ const styles = {
 const configs = loadAllConfigs();
 const modularizeConfig = configs.modularize;
 
-if (!modularizeConfig) throw new Error('No existe config/modularize.yaml');
-if (!modularizeConfig.paths) throw new Error('FALTA config.modularize.paths');
-if (!modularizeConfig.behavior) throw new Error('FALTA config.modularize.behavior');
-if (!modularizeConfig.advanced) throw new Error('FALTA config.modularize.advanced');
-if (!modularizeConfig.naming) throw new Error('FALTA config.modularize.naming');
-if (!modularizeConfig.affixes) throw new Error('FALTA config.modularize.affixes');
+if (!modularizeConfig) throw new Error('❌ No existe config/modularize.yaml');
+if (!modularizeConfig.paths) throw new Error('❌ FALTA config.modularize.paths');
+if (!modularizeConfig.behavior) throw new Error('❌ FALTA config.modularize.behavior');
+if (!modularizeConfig.advanced) throw new Error('❌ FALTA config.modularize.advanced');
+if (!modularizeConfig.naming) throw new Error('❌ FALTA config.modularize.naming');
+if (!modularizeConfig.affixes) throw new Error('❌ FALTA config.modularize.affixes');
 
 const pathsConfig = modularizeConfig.paths;
 const behaviorConfig = modularizeConfig.behavior;
@@ -44,7 +48,32 @@ const advancedConfig = modularizeConfig.advanced;
 const namingConfig = modularizeConfig.naming;
 const affixesConfig = modularizeConfig.affixes;
 
-// Configuracion de normalizacion de respuestas
+// Validaciones fuertes de los campos clave
+if (!pathsConfig.input || typeof pathsConfig.input !== 'string') {
+  throw new Error('❌ FALTA o es inválido: config.modularize.paths.input (string requerido)');
+}
+if (!pathsConfig.modularizedOutput || typeof pathsConfig.modularizedOutput !== 'string') {
+  throw new Error(
+    '❌ FALTA o es inválido: config.modularize.paths.modularizedOutput (string requerido)',
+  );
+}
+if (!advancedConfig.fileExtension || typeof advancedConfig.fileExtension !== 'string') {
+  throw new Error(
+    '❌ FALTA o es inválido: config.modularize.advanced.fileExtension (string requerido, ej: ".yaml")',
+  );
+}
+if (typeof behaviorConfig.cleanModularizedOutput !== 'boolean') {
+  throw new Error(
+    '❌ FALTA o es inválido: config.modularize.behavior.cleanModularizedOutput (boolean requerido)',
+  );
+}
+if (typeof behaviorConfig.fixRefs !== 'boolean') {
+  throw new Error(
+    '❌ FALTA o es inválido: config.modularize.behavior.fixRefs (boolean requerido)',
+  );
+}
+
+// Configuración de normalización de respuestas
 const responseNamingConfig = modularizeConfig.responseNaming || {
   enabled: false,
   removeStatusCodeFromName: true,
@@ -52,15 +81,25 @@ const responseNamingConfig = modularizeConfig.responseNaming || {
   includeStatusCodeInName: false,
   useSemanticNames: true,
   statusNames: {
-    200: 'Ok', 201: 'Created', 204: 'NoContent',
-    400: 'BadRequest', 401: 'Unauthorized', 403: 'Forbidden',
-    404: 'NotFound', 405: 'MethodNotAllowed', 409: 'Conflict',
-    422: 'UnprocessableEntity', 429: 'TooManyRequests',
-    500: 'InternalServerError', 501: 'NotImplemented',
-    502: 'BadGateway', 503: 'ServiceUnavailable', 504: 'GatewayTimeout',
-    default: 'UnexpectedError'
+    200: 'Ok',
+    201: 'Created',
+    204: 'NoContent',
+    400: 'BadRequest',
+    401: 'Unauthorized',
+    403: 'Forbidden',
+    404: 'NotFound',
+    405: 'MethodNotAllowed',
+    409: 'Conflict',
+    422: 'UnprocessableEntity',
+    429: 'TooManyRequests',
+    500: 'InternalServerError',
+    501: 'NotImplemented',
+    502: 'BadGateway',
+    503: 'ServiceUnavailable',
+    504: 'GatewayTimeout',
+    default: 'UnexpectedError',
   },
-  preserveCustomNames: ['2xx']
+  preserveCustomNames: ['2xx'],
 };
 
 // ---------------------------------------------------------------------------
@@ -77,7 +116,7 @@ const MAIN_FILE = path.join(NORMALIZED_TARGET_DIR, MAIN_FILE_NAME + FILE_EXTENSI
 const CLEAN_MOD_OUTPUT = behaviorConfig.cleanModularizedOutput;
 const FIX_REFS = behaviorConfig.fixRefs;
 
-// Descripciones genericas para respuestas
+// Descripciones genéricas para respuestas
 const GENERIC_DESCRIPTIONS = {
   '200': 'Successful operation',
   '201': 'Resource created successfully',
@@ -96,7 +135,7 @@ const GENERIC_DESCRIPTIONS = {
   '502': 'Bad gateway',
   '503': 'Service unavailable',
   '504': 'Gateway timeout',
-  'default': 'Unexpected error'
+  default: 'Unexpected error',
 };
 
 // ---------------------------------------------------------------------------
@@ -107,14 +146,6 @@ function assertValidOpenApiVersion(value) {
   if (typeof value !== 'string' || !/^3\.\d+(\.\d+)?$/.test(value.trim())) {
     throw new Error('Valor invalido para openapi: ' + value);
   }
-}
-
-function sanitizeComponentName(text) {
-  if (!text) return '';
-  return text.trim()
-    .replace(/[^a-zA-Z0-9._-]/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-+|-+$/g, '');
 }
 
 function hashContent(content) {
@@ -151,7 +182,7 @@ function normalizeResponseName(originalName, statusCode, description) {
   if (!responseNamingConfig.enabled) return originalName;
 
   const numericCode = parseInt(statusCode, 10);
-  
+
   if (!isNaN(numericCode) && shouldPreserveCustomName(numericCode)) {
     let name = originalName;
     if (responseNamingConfig.removeStatusCodeFromName) {
@@ -201,7 +232,7 @@ function generateResponseNameForInline(statusCode, description, existingNames) {
   if (statusCode === 'default') {
     baseName = statusNames.default || 'Default';
   } else {
-    baseName = statusNames[statusCode] || ('Status' + statusCode);
+    baseName = statusNames[statusCode] || 'Status' + statusCode;
   }
 
   let finalName = normalizeResponseName(baseName, statusCode, description || '');
@@ -235,10 +266,10 @@ function normalizeExistingResponses(components) {
     const codeMatch = originalName.match(/(\d{3})/);
     const statusCode = codeMatch ? codeMatch[1] : 'default';
     const contentSignature = getContentSignature(content);
-    const isSimple = isSimpleResponse(content);
-    
+    const simple = isSimpleResponse(content);
+
     let dedupeKey;
-    if (isSimple) {
+    if (simple) {
       dedupeKey = 'simple:' + statusCode;
     } else if (contentSignature) {
       dedupeKey = statusCode + ':' + contentSignature;
@@ -248,7 +279,8 @@ function normalizeExistingResponses(components) {
 
     if (signatureToName[dedupeKey]) {
       const existingName = signatureToName[dedupeKey];
-      refMapping['#/components/responses/' + originalName] = '#/components/responses/' + existingName;
+      refMapping['#/components/responses/' + originalName] =
+        '#/components/responses/' + existingName;
       nameMapping[originalName] = existingName + ' (deduplicado)';
       continue;
     }
@@ -264,14 +296,15 @@ function normalizeExistingResponses(components) {
 
     signatureToName[dedupeKey] = finalName;
     normalized[finalName] = normalizedContent;
-    
+
     if (finalName !== originalName) {
       nameMapping[originalName] = finalName;
-      refMapping['#/components/responses/' + originalName] = '#/components/responses/' + finalName;
+      refMapping['#/components/responses/' + originalName] =
+        '#/components/responses/' + finalName;
     }
   }
 
-  return { normalized: normalized, nameMapping: nameMapping, refMapping: refMapping };
+  return { normalized, nameMapping, refMapping };
 }
 
 function extractInlineResponses(paths) {
@@ -285,7 +318,16 @@ function extractInlineResponses(paths) {
     if (!pathObj) continue;
 
     for (const [method, operation] of Object.entries(pathObj)) {
-      const validMethods = ['get', 'post', 'put', 'delete', 'patch', 'options', 'head', 'trace'];
+      const validMethods = [
+        'get',
+        'post',
+        'put',
+        'delete',
+        'patch',
+        'options',
+        'head',
+        'trace',
+      ];
       if (!validMethods.includes(method.toLowerCase())) continue;
       if (!operation || !operation.responses) continue;
 
@@ -298,12 +340,19 @@ function extractInlineResponses(paths) {
         // CASO 1: Respuesta simple
         if (isSimpleResponse(response)) {
           if (simpleResponseByCode[statusCode]) {
-            responseReferences[pathRoute][method][statusCode] = simpleResponseByCode[statusCode];
+            responseReferences[pathRoute][method][statusCode] =
+              simpleResponseByCode[statusCode];
             continue;
           }
-          const responseName = generateResponseNameForInline(statusCode, '', usedNames);
+          const responseName = generateResponseNameForInline(
+            statusCode,
+            '',
+            usedNames,
+          );
           const genericContent = {
-            description: GENERIC_DESCRIPTIONS[statusCode] || ('Response for status ' + statusCode)
+            description:
+              GENERIC_DESCRIPTIONS[statusCode] ||
+              'Response for status ' + statusCode,
           };
           simpleResponseByCode[statusCode] = responseName;
           extractedResponses[responseName] = genericContent;
@@ -316,13 +365,21 @@ function extractInlineResponses(paths) {
         if (contentSignature) {
           const signatureKey = statusCode + ':' + contentSignature;
           if (contentSignatureMap[signatureKey]) {
-            responseReferences[pathRoute][method][statusCode] = contentSignatureMap[signatureKey];
+            responseReferences[pathRoute][method][statusCode] =
+              contentSignatureMap[signatureKey];
             continue;
           }
-          const responseName = generateResponseNameForInline(statusCode, '', usedNames);
+          const responseName = generateResponseNameForInline(
+            statusCode,
+            '',
+            usedNames,
+          );
           const normalizedResponse = {
-            description: GENERIC_DESCRIPTIONS[statusCode] || response.description || ('Response for status ' + statusCode),
-            content: response.content
+            description:
+              GENERIC_DESCRIPTIONS[statusCode] ||
+              response.description ||
+              'Response for status ' + statusCode,
+            content: response.content,
           };
           if (response.headers) {
             normalizedResponse.headers = response.headers;
@@ -333,14 +390,19 @@ function extractInlineResponses(paths) {
           continue;
         }
 
-        // CASO 3: Respuesta compleja unica
+        // CASO 3: Respuesta compleja única
         const contentHash = hashContent(response);
         const hashKey = 'hash:' + contentHash;
         if (contentSignatureMap[hashKey]) {
-          responseReferences[pathRoute][method][statusCode] = contentSignatureMap[hashKey];
+          responseReferences[pathRoute][method][statusCode] =
+            contentSignatureMap[hashKey];
           continue;
         }
-        const responseName = generateResponseNameForInline(statusCode, response.description, usedNames);
+        const responseName = generateResponseNameForInline(
+          statusCode,
+          response.description,
+          usedNames,
+        );
         contentSignatureMap[hashKey] = responseName;
         extractedResponses[responseName] = response;
         responseReferences[pathRoute][method][statusCode] = responseName;
@@ -348,7 +410,7 @@ function extractInlineResponses(paths) {
     }
   }
 
-  return { extractedResponses: extractedResponses, responseReferences: responseReferences };
+  return { extractedResponses, responseReferences };
 }
 
 function replaceInlineResponsesWithRefs(paths, responseReferences) {
@@ -358,24 +420,11 @@ function replaceInlineResponsesWithRefs(paths, responseReferences) {
       if (!paths[pathRoute][method] || !paths[pathRoute][method].responses) continue;
       for (const [statusCode, responseName] of Object.entries(statusCodesMap)) {
         paths[pathRoute][method].responses[statusCode] = {
-          $ref: '../components/responses/' + responseName + '.yaml'
+          $ref: '../components/responses/' + responseName + '.yaml',
         };
       }
     }
   }
-}
-
-function generateFileName(itemName, componentType) {
-  let fileName = itemName;
-  const convention = namingConfig.components || 'PascalCase';
-  fileName = applyNamingConvention(fileName, convention);
-  if (affixesConfig.enabled) {
-    const prefix = (affixesConfig.prefixes && affixesConfig.prefixes[componentType]) || '';
-    const suffix = (affixesConfig.suffixes && affixesConfig.suffixes[componentType]) || '';
-    if (prefix) fileName = prefix + fileName;
-    if (suffix) fileName = fileName + suffix;
-  }
-  return fileName;
 }
 
 // ---------------------------------------------------------------------------
@@ -405,7 +454,10 @@ async function modularize(inputPathFromCli) {
       const response = await prompts({
         type: 'confirm',
         name: 'replace',
-        message: 'La carpeta ' + NORMALIZED_TARGET_DIR + ' ya existe. Deseas reemplazarla?',
+        message:
+          'La carpeta ' +
+          NORMALIZED_TARGET_DIR +
+          ' ya existe. Deseas reemplazarla?',
         initial: false,
       });
       if (!response.replace) {
@@ -435,24 +487,24 @@ async function modularize(inputPathFromCli) {
       components: {},
     };
 
-    Object.entries(oasData).forEach(function(entry) {
-      if (entry[0].startsWith('x-')) newOas[entry[0]] = entry[1];
+    Object.entries(oasData).forEach(function ([key, value]) {
+      if (key.startsWith('x-')) newOas[key] = value;
     });
 
     // Normalizar respuestas existentes
     if (responseNamingConfig.enabled && oasData.components && oasData.components.responses) {
       console.log('\n' + styles.section('  NORMALIZANDO NOMBRES DE RESPUESTAS'));
-      
+
       const result = normalizeExistingResponses(oasData.components);
       const normalized = result.normalized;
       const nameMapping = result.nameMapping;
       const refMapping = result.refMapping;
-      
+
       const changesCount = Object.keys(nameMapping).length;
-      
+
       if (changesCount > 0) {
         oasData.components.responses = normalized;
-        
+
         if (Object.keys(refMapping).length > 0) {
           let pathsStr = JSON.stringify(oasData.paths);
           for (const [oldRef, newRef] of Object.entries(refMapping)) {
@@ -461,7 +513,7 @@ async function modularize(inputPathFromCli) {
           }
           oasData.paths = JSON.parse(pathsStr);
         }
-        
+
         for (const [oldName, newName] of Object.entries(nameMapping)) {
           console.log(styles.step('  ' + oldName + ' -> ' + newName));
         }
@@ -492,10 +544,15 @@ async function modularize(inputPathFromCli) {
         }
       }
 
-      console.log(styles.success(
-        Object.keys(extractedResponses).length + ' respuesta(s) unica(s) extraida(s) ' +
-        '(de ' + totalRefs + ' referencias totales - deduplicadas)'
-      ));
+      console.log(
+        styles.success(
+          Object.keys(extractedResponses).length +
+            ' respuesta(s) unica(s) extraida(s) ' +
+            '(de ' +
+            totalRefs +
+            ' referencias totales - deduplicadas)',
+        ),
+      );
     } else {
       console.log(styles.info('No hay respuestas inline para extraer'));
     }
@@ -508,11 +565,16 @@ async function modularize(inputPathFromCli) {
     const componentsByType = {};
 
     const standardComponentTypes = [
-      'schemas', 'responses', 'requestBodies', 'parameters',
-      'examples', 'headers', 'securitySchemes'
+      'schemas',
+      'responses',
+      'requestBodies',
+      'parameters',
+      'examples',
+      'headers',
+      'securitySchemes',
     ];
 
-    standardComponentTypes.forEach(function(type) {
+    standardComponentTypes.forEach(function (type) {
       const categoryDir = path.join(COMPONENTS_DIR, type);
       ensureDir(categoryDir);
       componentsByType[type] = [];
@@ -530,19 +592,25 @@ async function modularize(inputPathFromCli) {
         }
 
         for (const [itemName, itemContent] of Object.entries(categoryContent)) {
-          let fileName;
-          if (categoryKey === 'responses') {
-            fileName = itemName;
-          } else {
-            fileName = generateFileName(itemName, categoryKey);
-          }
+          const fileName = generateComponentFilename(
+            itemName,
+            categoryKey,
+            namingConfig,
+            affixesConfig,
+          );
 
           const fileNameWithExt = fileName + FILE_EXTENSION;
           const filePath = path.join(categoryDir, fileNameWithExt);
 
           let finalContent = itemContent;
           if (FIX_REFS) {
-            finalContent = fixRefs(itemContent, categoryKey, MAIN_FILE_NAME, namingConfig, affixesConfig);
+            finalContent = fixRefs(
+              itemContent,
+              categoryKey,
+              MAIN_FILE_NAME,
+              namingConfig,
+              affixesConfig,
+            );
           }
           writeYamlFile(filePath, finalContent);
 
@@ -550,7 +618,7 @@ async function modularize(inputPathFromCli) {
             newOas.components[categoryKey] = {};
           }
           newOas.components[categoryKey][itemName] = {
-            $ref: './components/' + categoryKey + '/' + fileNameWithExt
+            $ref: './components/' + categoryKey + '/' + fileNameWithExt,
           };
 
           componentsByType[categoryKey].push(itemName);
@@ -578,12 +646,21 @@ async function modularize(inputPathFromCli) {
       if (pathObj && Object.keys(pathObj).length > 0) {
         const routeSlugified = slugifyPath(route).replace(/\.yaml$/, '');
         const pathConvention = namingConfig.paths || 'kebab-case';
-        const fileName = applyNamingConvention(routeSlugified, pathConvention) + FILE_EXTENSION;
+        const fileName =
+          applyNamingConvention(routeSlugified, pathConvention) + FILE_EXTENSION;
         const filePath = path.join(PATHS_DIR, fileName);
 
         let finalPathObj = pathObj;
         if (FIX_REFS) {
-          finalPathObj = fixRefs(pathObj, 'paths', MAIN_FILE_NAME, namingConfig, affixesConfig);
+          // extractResponses = true porque las responses están modularizadas
+          finalPathObj = fixRefs(
+            pathObj,
+            'paths',
+            MAIN_FILE_NAME,
+            namingConfig,
+            affixesConfig,
+            true,
+          );
         }
         writeYamlFile(filePath, finalPathObj);
 
@@ -600,7 +677,11 @@ async function modularize(inputPathFromCli) {
     if (pathCount === 0) {
       throw new Error('No se encontraron paths validos para modularizar');
     }
-    console.log(styles.success(pathCount + ' path(s) modularizado(s), ' + ignoredCount + ' ignorado(s)'));
+    console.log(
+      styles.success(
+        pathCount + ' path(s) modularizado(s), ' + ignoredCount + ' ignorado(s)',
+      ),
+    );
 
     // Guardar entrypoint
     console.log('\n' + styles.section('  GUARDANDO ENTRYPOINT'));
@@ -617,17 +698,18 @@ async function modularize(inputPathFromCli) {
     console.log(styles.divider());
     console.log(styles.success('Carpeta generada: ' + NORMALIZED_TARGET_DIR));
 
-    const activeTypes = Object.keys(componentsByType).filter(function(t) {
+    const activeTypes = Object.keys(componentsByType).filter(function (t) {
       return componentsByType[t].length > 0;
     });
-    
+
     console.log(styles.info('Resumen:'));
-    activeTypes.forEach(function(type) {
-      console.log(styles.info('  - ' + type + ': ' + componentsByType[type].length + ' archivo(s)'));
+    activeTypes.forEach(function (type) {
+      console.log(
+        styles.info('  - ' + type + ': ' + componentsByType[type].length + ' archivo(s)'),
+      );
     });
     console.log(styles.info('  - paths: ' + pathsList.length + ' archivo(s)'));
     console.log('');
-
   } catch (error) {
     console.log('\n' + styles.divider());
     console.log(chalk.red.bold('  ERROR EN MODULARIZACION'));
@@ -639,9 +721,9 @@ async function modularize(inputPathFromCli) {
 }
 
 module.exports = {
-  modularize: modularize,
+  modularize,
   TARGET_DIR: NORMALIZED_TARGET_DIR,
-  COMPONENTS_DIR: COMPONENTS_DIR,
-  PATHS_DIR: PATHS_DIR,
-  MAIN_FILE: MAIN_FILE,
+  COMPONENTS_DIR,
+  PATHS_DIR,
+  MAIN_FILE,
 };

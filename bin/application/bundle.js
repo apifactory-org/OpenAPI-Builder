@@ -32,7 +32,7 @@ const { readYamlFile, writeYamlFile } = require('../infrastructure/yamlUtils');
  *   y no viene ni por CLI/input ni por config:
  *      → se lanza un error claro.
  *
- * - Para flags de comportamiento (dereference, removeUnusedComponents, etc.)
+ * - Para flags de comportamiento (dereference, removeUnusedComponents, etc.),
  *   existen defaults técnicos internos. El config los sobreescribe si está presente.
  */
 
@@ -65,12 +65,23 @@ function assertOptionalBoolean(obj, field, context) {
   }
 }
 
+function assertOptionalString(obj, field, context) {
+  if (obj[field] !== undefined && typeof obj[field] !== 'string') {
+    throw new Error(
+      `❌ El campo ${context}.${field} debe ser string si se define (valor actual: ${JSON.stringify(
+        obj[field],
+      )})`,
+    );
+  }
+}
+
 // Validamos tipos SOLO si están definidos en config
 assertOptionalBoolean(behaviorConfig, 'cleanDist', 'config.bundle.behavior');
 assertOptionalBoolean(bundleConfig, 'dereference', 'config.bundle.bundle');
 assertOptionalBoolean(bundleConfig, 'removeUnusedComponents', 'config.bundle.bundle');
 assertOptionalBoolean(bundleConfig, 'injectFormat', 'config.bundle.bundle');
 assertOptionalBoolean(bundleConfig, 'validate', 'config.bundle.bundle');
+assertOptionalString(pathsConfig, 'bundleOutput', 'config.bundle.paths');
 
 // Comportamiento efectivo (config sobreescribe defaults)
 const CLEAN_DIST =
@@ -126,11 +137,11 @@ async function bundleWithRedocly(inputPath, outputPath) {
     throw new Error(
       '❌ Debes especificar la ruta de salida del bundle:\n' +
         '   - vía CLI:   oas3-modularize bundle -o ./dist/openapi.yaml\n' +
-        '   - o en config/bundle.yaml → bundle.paths.bundleOutput',
+        '   - o en config/bundle.yaml → paths.bundleOutput',
     );
   }
 
-  console.log(chalk.cyan('\n📦 Generando bundle con Redocly...\n'));
+  console.log(chalk.cyan('\n📦 Generando bundle...\n'));
 
   const redoclyPath = resolveExecutable('redocly');
 
