@@ -6,34 +6,44 @@ const { applyNamingConvention } = require('./namingConventions');
  * Corrige los $ref dentro de un objeto OpenAPI, transformándolos a rutas relativas
  * correctas en función del tipo de contenido y la nueva estructura de carpetas.
  *
- * Nueva estructura:
- * ```
+ * Estructura esperada:
  * src/
+ *   ├── <mainFileName>.yaml          (entrypoint principal)
  *   ├── components/
  *   │   ├── schemas/
  *   │   ├── requestBodies/
  *   │   ├── responses/
- *   │   └── ...
- *   ├── paths/
- *   │   ├── user.yaml
- *   │   └── pet.yaml
- *   └── main.yaml
- * ```
+ *   │   ├── parameters/
+ *   │   ├── examples/
+ *   │   └── headers/
+ *   └── paths/
  *
- * Rutas relativas desde cada ubicación:
- * - Desde paths/     -> ../components/responses/  (subir 1, entrar a components/responses)
- * - Desde components/schemas/   -> ../responses/  (subir 1, entrar a responses - mismo nivel)
- * - Desde components/responses/ -> ../schemas/    (subir 1, entrar a schemas - mismo nivel)
+ * Reglas de resolución:
+ * - Desde paths/*:
+ *   - "#/components/xxx/Name" → "../<mainFileName>.yaml#/components/xxx/Name"
+ *
+ * - Desde components/<type>/*:
+ *   - "#/components/schemas/Name"              → "../schemas/<fileName>.yaml"
+ *   - "#/components/<sameType>/Name"          → "../<sameType>/<fileName>.yaml"
+ *   - "#/components/<otherType>/Name"         → "../<otherType>/<fileName>.yaml"
+ *   (para responses, el nombre de archivo se asume igual al identificador)
  *
  * @param {object} content        Objeto con el contenido a corregir.
- * @param {string} componentType  Tipo ("schemas", "requestBodies", "paths", etc.).
- * @param {string} mainFileName   Nombre del archivo principal sin extensión.
- * @param {object} namingConfig   Configuración de nombres.
- * @param {object} affixesConfig  Configuración de prefijos/sufijos.
- * @param {boolean} extractResponses  Si las respuestas se extraen a archivos separados.
+ * @param {string} componentType  Tipo lógico del contenido:
+ *                                "paths", "schemas", "responses",
+ *                                "requestBodies", "parameters", etc.
+ * @param {string} mainFileName   Nombre del archivo principal SIN extensión.
+ * @param {object} namingConfig   Configuración de nombres (convenciones).
+ * @param {object} affixesConfig  Configuración de prefijos/sufijos de archivos.
  * @returns {object}              Objeto con referencias corregidas.
  */
-function fixRefs(content, componentType, mainFileName = 'openapi', namingConfig = {}, affixesConfig = {}, extractResponses = false) {
+function fixRefs(
+  content,
+  componentType,
+  mainFileName = 'openapi',
+  namingConfig = {},
+  affixesConfig = {}
+) {
   if (!content || typeof content !== 'object') {
     return content;
   }
@@ -46,54 +56,55 @@ function fixRefs(content, componentType, mainFileName = 'openapi', namingConfig 
   let contentString = JSON.stringify(content);
 
   /**
-   * Sanitiza un string para nombres de componentes OpenAPI válidos
-   */
-  function sanitizeComponentName(text) {
-    if (!text) return '';
-    return text
-      .trim()
-      .replace(/[^a-zA-Z0-9._-]/g, '-')
-      .replace(/-+/g, '-')
-      .replace(/^-+|-+$/g, '');
-  }
-
-  /**
-   * Genera el nombre de archivo aplicando sanitización, convenciones y afijos
+   * Genera el nombre de archivo para un componente aplicando:
+   *   - convención de nombres (PascalCase, etc.)
+   *   - prefijos/sufijos por tipo (según affixesConfig)
+   *
+   * Debe ser consistente con la lógica usada en modularize.js
+   * al crear los archivos de components/*.
    */
   function generateFileName(itemName, type) {
-    let fileName = sanitizeComponentName(itemName);
+    let fileName = itemName;
+
+    // Convención para nombres de componentes (archivo base, sin extensión)
     const convention = namingConfig.components || 'PascalCase';
     fileName = applyNamingConvention(fileName, convention);
 
+    // Aplicar prefijos/sufijos si están habilitados
     if (affixesConfig.enabled) {
-      const prefix = affixesConfig.prefixes?.[type] || '';
-      const suffix = affixesConfig.suffixes?.[type] || '';
+      const prefix =
+        (affixesConfig.prefixes && affixesConfig.prefixes[type]) || '';
+      const suffix =
+        (affixesConfig.suffixes && affixesConfig.suffixes[type]) || '';
+
       if (prefix) fileName = prefix + fileName;
       if (suffix) fileName = fileName + suffix;
     }
+
     return fileName;
   }
 
   /**
-   * Calcula la ruta relativa correcta según el origen y destino
-   * @param {string} fromType - Tipo de componente origen (paths, schemas, responses, etc.)
-   * @param {string} toType - Tipo de componente destino
-   * @returns {string} - Prefijo de ruta relativa
+   * Calcula la ruta relativa base según el origen y destino
+   * Ejemplos:
+   *   - fromType: 'paths'     → "../components/<toType>"
+   *   - fromType: 'schemas'   → "../<toType>"
+   *   - fromType: 'responses' → "../<toType>"
    */
   function getRelativePath(fromType, toType) {
     if (fromType === 'paths') {
-      // Desde paths/ hacia components/*
-      // paths/pet.yaml -> ../components/schemas/Pet.yaml
+      // Desde paths/* hacia components/<toType>/*
       return `../components/${toType}`;
-    } else {
-      // Desde components/* hacia components/*
-      // components/schemas/Pet.yaml -> ../responses/Ok.yaml
-      return `../${toType}`;
     }
+    // Desde components/<fromType>/* hacia components/<toType>/*
+    return `../${toType}`;
   }
 
+  // ─────────────────────────────────────────────
+  // 1) Contenido dentro de components.schemas
+  // ─────────────────────────────────────────────
   if (componentType === 'schemas') {
-    // Dentro de schemas: referencias a otros schemas
+    // Referencias a otros schemas
     contentString = contentString.replace(
       /"#\/components\/schemas\/([^"]+)"/g,
       (match, name) => {
@@ -102,10 +113,22 @@ function fixRefs(content, componentType, mainFileName = 'openapi', namingConfig 
         return `"${relativePath}/${fileName}.yaml"`;
       }
     );
-  } else if (
-    ['requestBodies', 'responses', 'securitySchemes', 'parameters', 'examples', 'headers'].includes(componentType)
+  }
+  // ─────────────────────────────────────────────
+  // 2) Contenido dentro de otros components/*
+  //    (requestBodies, responses, securitySchemes, parameters, examples, headers)
+  // ─────────────────────────────────────────────
+  else if (
+    [
+      'requestBodies',
+      'responses',
+      'securitySchemes',
+      'parameters',
+      'examples',
+      'headers',
+    ].includes(componentType)
   ) {
-    // Referencias a schemas
+    // 2.1 Referencias a schemas
     contentString = contentString.replace(
       /"#\/components\/schemas\/([^"]+)"/g,
       (match, name) => {
@@ -115,53 +138,56 @@ function fixRefs(content, componentType, mainFileName = 'openapi', namingConfig 
       }
     );
 
-    // Referencias al mismo tipo de componente
-    const reSameType = new RegExp(`"#\\/components\\/${componentType}\\/([^"]+)"`, 'g');
+    // 2.2 Referencias al mismo tipo de componente
+    const reSameType = new RegExp(
+      `"#\\/components\\/${componentType}\\/([^"]+)"`,
+      'g'
+    );
     contentString = contentString.replace(reSameType, (match, name) => {
-      const fileName = componentType === 'responses' ? name : generateFileName(name, componentType);
+      // Para responses mantenemos el nombre tal cual (ya viene normalizado
+      // por la lógica de modularización / responseNaming).
+      const fileName =
+        componentType === 'responses'
+          ? name
+          : generateFileName(name, componentType);
+
       const relativePath = getRelativePath(componentType, componentType);
       return `"${relativePath}/${fileName}.yaml"`;
     });
 
-    // Referencias a otros tipos de componentes
+    // 2.3 Referencias a otros tipos de componentes (ej: headers que referencian parameters)
     contentString = contentString.replace(
       /"#\/components\/([a-zA-Z]+)\/([^"]+)"/g,
       (match, componentCategory, name) => {
-        if (componentCategory === componentType) return match;
-        const fileName = componentCategory === 'responses' ? name : generateFileName(name, componentCategory);
+        // Si ya lo manejamos arriba (schemas o mismo tipo) no lo cambiamos otra vez
+        if (componentCategory === 'schemas' || componentCategory === componentType) {
+          return match;
+        }
+
+        // Para responses, el nombre de archivo es el identificador
+        const fileName =
+          componentCategory === 'responses'
+            ? name
+            : generateFileName(name, componentCategory);
+
         const relativePath = getRelativePath(componentType, componentCategory);
         return `"${relativePath}/${fileName}.yaml"`;
       }
     );
-  } else if (componentType === 'paths') {
-    // Desde paths: referencias a componentes
-    
-    if (extractResponses) {
-      // Si las respuestas están extraídas a archivos separados,
-      // las referencias a responses van a ../components/responses/
-      contentString = contentString.replace(
-        /"#\/components\/responses\/([^"]+)"/g,
-        (match, name) => {
-          // El nombre ya viene procesado del extractor de respuestas
-          return `"../components/responses/${name}.yaml"`;
-        }
-      );
-    }
-
-    // Referencias a schemas y otros componentes -> al archivo principal
-    contentString = contentString.replace(
-      /"#\/components\/schemas\/([^"]+)"/g,
-      `"../${mainFileName}.yaml#/components/schemas/$1"`
-    );
-
-    // Referencias genéricas restantes -> al archivo principal
+  }
+  // ─────────────────────────────────────────────
+  // 3) Contenido dentro de paths/*
+  // ─────────────────────────────────────────────
+  else if (componentType === 'paths') {
+    // Desde archivos de path, cualquier "#/components/..." debe apuntar
+    // al entrypoint principal: "../<mainFileName>.yaml#/components/..."
+    //
+    // Ejemplo:
+    //   "#/components/schemas/User" →
+    //   "../main.yaml#/components/schemas/User"
     contentString = contentString.replace(
       /"#\/components\/([^"]+)"/g,
       (match, rest) => {
-        // Evitar doble procesamiento de responses si ya se procesaron
-        if (extractResponses && rest.startsWith('responses/')) {
-          return match; // Ya procesado arriba
-        }
         return `"../${mainFileName}.yaml#/components/${rest}"`;
       }
     );
