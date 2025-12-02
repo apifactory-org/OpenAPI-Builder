@@ -233,7 +233,7 @@ const MENU_ACTIONS = [
 async function showMenu() {
     console.clear();
     console.log('\n' + styles.divider());
-    console.log(styles.header('  OpenAPI Builder CLI v1.0.8'));
+    console.log(styles.header('  OpenAPI Builder v1.0.0'));
     console.log(styles.divider() + '\n');
 
     // Mostrar opciones enumeradas

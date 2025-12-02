@@ -1,16 +1,16 @@
 {
-  "name": "@apifactory/oas3-modularize",
-  "version": "1.0.8",
-  "description": "CLI para modularizar contratos OpenAPI 3, validarlos con Redocly, generar bundle y documentación Markdown.",
-  "main": "bin/oas3-modularize.js",
-  "bin": {
-    "oas3-modularize": "bin/oas3-modularize.js"
-  },
+  "name": "openapi-builder",
+  "version": "1.0.0",
+  "description": "CLI para trabajar con contratos OpenAPI 3: modularizar, generar bundle, documentación Markdown y convertir a Swagger 2.0.",
   "type": "commonjs",
+  "bin": {
+    "openapi-builder": "bin/oas3-modularize.js"
+  },
   "scripts": {
-    "modularize": "oas3-modularize modularize",
-    "bundle": "oas3-modularize bundle",
-    "docs": "oas3-modularize docs"
+    "modularize": "node bin/oas3-modularize.js modularize",
+    "bundle": "node bin/oas3-modularize.js bundle",
+    "docs": "node bin/oas3-modularize.js docs",
+    "swagger2": "node bin/oas3-modularize.js swagger2"
   },
   "keywords": [
     "oas3",
@@ -21,7 +21,8 @@
     "redocly",
     "widdershins",
     "documentation",
-    "api"
+    "api",
+    "bundle"
   ],
   "author": "",
   "license": "MIT",

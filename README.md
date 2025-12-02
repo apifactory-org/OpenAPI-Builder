@@ -1,152 +1,180 @@
-# oas3-modularize
+# openapi-builder
 
-CLI para trabajar con especificaciones OpenAPI 3 (OAS3) de forma más productiva.
-Convierte un archivo monolítico .yaml en una estructura modular lista para Redocly, genera bundle, valida y produce documentación Markdown.
+CLI profesional para trabajar con especificaciones **OpenAPI 3 (OAS3)**: modularización completa, validación, bundle, documentación Markdown y conversión a Swagger 2.0.
 
--------------------------------------------------------------------------------
+---
 
 ## 🚀 Características principales
 
-- Modularización automática
-  Convierte un archivo único OAS en:
-  
-      src/
-        openapi.yaml
-        components/*.yaml
-        paths/*.yaml
+### 🔧 Modularización automática
 
-- Corrección inteligente de referencias $ref
-  - Ajusta rutas relativas entre componentes
-  - Ajusta $ref internos de schemas, requestBodies, responses, etc.
-  - Ajusta referencias desde paths → openapi.yaml
+Convierte un archivo único OpenAPI en una estructura modular:
 
-- Validación con Redocly CLI
-  - Ejecuta redocly lint automáticamente
-  - Muestra advertencias y errores de forma amigable
+```
+src/
+  main.yaml
+  components/
+    schemas/*.yaml
+    responses/*.yaml
+    requestBodies/*.yaml
+    ...
+  paths/*.yaml
+```
 
-- Generación de bundle
-  - Usa redocly bundle
-  - --dereferenced
-  - --remove-unused-components
+Incluye:
 
-- Generación de documentación Markdown
-  - Convierte OpenAPI → Markdown usando Widdershins
+* extracción de respuestas inline
+* deduplicación
+* normalización opcional de nombres
+* corrección inteligente de `$ref` según la estructura generada
 
-- Menú interactivo (no más memorizar comandos)
-  - Modularizar
-  - Bundle
-  - Docs
-  - Pipeline completo
+### ✔ Validación integrada
 
--------------------------------------------------------------------------------
+Valida automáticamente el contrato modularizado usando Redocly CLI (incluido como dependencia interna; el usuario no instala nada).
 
-## 📦 Instalación (global)
+### 📦 Generación de bundle (OAS3)
 
-Este CLI está pensado para usarse instalado globalmente, sin necesidad de clonar el repositorio ni agregar dependencias a cada proyecto.
+Produce un archivo OpenAPI unificado desde la estructura modular.
 
-Instalar globalmente:
+Opciones:
 
-    npm install -g @apifactory/oas3-modularize
+* dereference
+* remove-unused-components
+* inject-format
+* skip validation
 
-Después de eso, el comando queda disponible en todo el sistema:
+### 📚 Generación de documentación Markdown
 
-    oas3-modularize
+Convierte OpenAPI a Markdown con Widdershins (incluido como dependencia interna).
 
--------------------------------------------------------------------------------
+### 🔄 Conversión OAS3 → Swagger 2.0
 
-## 🧩 Uso desde el menú interactivo (recomendado)
+Convierte cualquier bundle OpenAPI 3 en un archivo Swagger 2.0 usando **api-spec-converter**.
 
-Simplemente ejecuta:
+### 🧠 Menú interactivo
 
-    oas3-modularize
+Incluye un menú que evita tener que memorizar comandos.
 
-Verás un menú como este:
+---
 
-    🧩 oas3-modularize - Menú interactivo
+## 📦 Instalación (global o por proyecto)
 
-    ¿Qué quieres hacer?
+Instalación global:
 
-    1) Modularizar archivo OpenAPI YAML
-    2) Generar bundle con Redocly
-    3) Generar documentación Markdown
-    4) Ejecutar todo el pipeline
-    Salir
+```
+npm install -g @apifactory/openapi-builder
+```
 
--------------------------------------------------------------------------------
+O bien usarlo sin instalación mediante **npx**:
+
+```
+npx @apifactory/openapi-builder
+```
+
+---
+
+## 🧩 Menú interactivo (recomendado)
+
+Ejecuta:
+
+```
+openapi-builder
+```
+
+Menú disponible:
+
+```
+🧩 openapi-builder - Menú interactivo
+
+1) Modularizar OpenAPI 3 → Estructura modular
+2) Generar bundle OpenAPI 3
+3) Generar documentación Markdown
+4) Convertir OpenAPI 3 → Swagger 2.0
+Salir
+```
+
+---
 
 ## 🛠 Uso mediante subcomandos
 
 ### 1. Modularizar
 
-    oas3-modularize modularize --build ./openapi.yaml
+```
+openapi-builder modularize -i ./openapi.yaml
+```
 
-### 2. Generar Bundle
+### 2. Generar bundle
 
-    oas3-modularize bundle \
-      --input src/openapi.yaml \
-      --output dist/openapi.yaml
+```
+openapi-builder bundle \
+  -i ./src/main.yaml \
+  -o ./dist/openapi.yaml
+```
 
 ### 3. Generar documentación Markdown
 
-    oas3-modularize docs \
-      --input dist/openapi.yaml \
-      --output dist/api.md
+```
+openapi-builder docs \
+  -i ./dist/openapi.yaml \
+  -o ./docs/api.md
+```
 
-### 4. Pipeline completo
+### 4. Convertir a Swagger 2.0
 
-    oas3-modularize build-all --build ./openapi.yaml
+```
+openapi-builder swagger2 \
+  -i ./dist/openapi.yaml \
+  -o ./dist/openapi.swagger2.yaml
+```
 
-Incluye:
-1. Modularización → src/
-2. Bundle → dist/openapi.yaml
-3. Docs → dist/api.md
+---
 
--------------------------------------------------------------------------------
+## 📁 Estructura generada por la modularización
 
-## 📁 Estructura generada
+```
+src/
+  main.yaml
+  components/
+    schemas/*.yaml
+    responses/*.yaml
+    requestBodies/*.yaml
+    parameters/*.yaml
+    ...
+  paths/
+    users.yaml
+    users-id.yaml
+    ...
 
-    src/
-      openapi.yaml
-      components/
-        schemas.yaml
-        requestBodies.yaml
-        responses.yaml
-        ...
-      paths/
-        users.yaml
-        users-id.yaml
-        ...
-    dist/
-      openapi.yaml      (bundle final)
-      api.md            (docs Markdown)
+dist/
+  openapi.yaml            (bundle final)
+  api.md                  (documentación Markdown)
+  openapi.swagger2.yaml   (si se genera downgrade)
+```
 
--------------------------------------------------------------------------------
+---
 
 ## ⚙ Requisitos
 
-- Node.js 16+ (recomendado: 18+)
+* Node.js 16+ (recomendado: 18+)
+* No requiere instalar Redocly ni Widdershins en los proyectos donde se usa
 
-IMPORTANTE:
-No necesitas instalar @redocly/cli ni widdershins en tus proyectos.
-Estas herramientas vienen incluidas como dependencias internas del CLI.
-
--------------------------------------------------------------------------------
+---
 
 ## 🤝 Contribuir
 
 1. Haz un fork del repositorio
 2. Crea una rama con tu mejora
-3. Haz un PR describiendo el cambio
+3. Envía un Pull Request describiendo el cambio
 
--------------------------------------------------------------------------------
+---
 
 ## 📄 Licencia
 
 MIT License
 
--------------------------------------------------------------------------------
+---
 
 ## ✨ Autor
 
-API Factory  
+**API Factory**
 Herramientas modernas para el diseño, documentación y automatización de APIs.

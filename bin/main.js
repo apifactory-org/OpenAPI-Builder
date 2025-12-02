@@ -1,4 +1,4 @@
 #!/usr/bin/env node
 
-// bin/oas3-modularize.js
+// bin/main.js
 require('./interface/cli');
