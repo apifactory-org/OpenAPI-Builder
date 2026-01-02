@@ -1,0 +1,530 @@
+{
+  "meta": {
+    "context_schema_version": "1.1",
+    "generator": "scripts/ai-context.js",
+    "generated_at": "2026-01-02T17:56:07.165Z",
+    "repo_root": "C:\\data\\@apifactory\\oas3-modularize",
+    "profile": "llm",
+    "flags": {
+      "include_git": false,
+      "include_quality_details": false,
+      "maxLines": 2000,
+      "maxTreeLines": 250
+    }
+  },
+  "declared": {
+    "product": {
+      "source": "declared",
+      "confidence": "high",
+      "value": {
+        "name": "OpenAPI Builder",
+        "type": "node-cli",
+        "purpose": "CLI para modularizar contratos OpenAPI 3.x, generar bundle, docs Markdown y convertir a Swagger 2.0, siguiendo Clean Architecture (capas, puertos/adaptadores).\n",
+        "audience": [
+          "API teams",
+          "platform engineering",
+          "backend engineers"
+        ],
+        "expected_outputs": [
+          {
+            "path": "./src",
+            "description": "Estructura modular generada desde un OpenAPI monolítico",
+            "guaranteed_after_success": true,
+            "idempotent": "yes (if clean output enabled)",
+            "must_exist_before": false
+          },
+          {
+            "path": "./dist/bundle.yaml",
+            "description": "Bundle OpenAPI 3 consolidado",
+            "guaranteed_after_success": true,
+            "idempotent": "yes",
+            "must_exist_before": false
+          },
+          {
+            "path": "./docs/api.md",
+            "description": "Documentación Markdown generada",
+            "guaranteed_after_success": true,
+            "idempotent": "yes",
+            "must_exist_before": false
+          },
+          {
+            "path": "./dist/swagger2.yaml",
+            "description": "Conversión a Swagger 2.0",
+            "guaranteed_after_success": true,
+            "idempotent": "yes",
+            "must_exist_before": false
+          }
+        ]
+      }
+    },
+    "authoritative_intent": {
+      "source": "declared",
+      "confidence": "high",
+      "value": "Este repo implementa un CLI orientado a “API contract operations”: convertir una spec OpenAPI 3.x monolítica en estructura modular mantenible, consolidar a bundle validado, generar documentación y exportar a Swagger 2.0 para compatibilidad legacy.\n"
+    },
+    "operational_model": {
+      "source": "declared",
+      "confidence": "high",
+      "value": {
+        "declared_inputs": [
+          {
+            "name": "openapi_spec",
+            "type": "file",
+            "formats": [
+              "yaml",
+              "yml",
+              "json"
+            ],
+            "required": true,
+            "used_by": [
+              "modularize"
+            ],
+            "examples": [
+              "./api/openapi.yaml"
+            ]
+          },
+          {
+            "name": "modular_entrypoint",
+            "type": "file",
+            "formats": [
+              "yaml",
+              "yml"
+            ],
+            "required": false,
+            "used_by": [
+              "bundle"
+            ],
+            "default": "./src/main.yaml"
+          },
+          {
+            "name": "bundle_input",
+            "type": "file",
+            "formats": [
+              "yaml",
+              "yml"
+            ],
+            "required": false,
+            "used_by": [
+              "docs",
+              "swagger2"
+            ],
+            "default": "./dist/bundle.yaml"
+          },
+          {
+            "name": "configs",
+            "type": "folder",
+            "required": false,
+            "files": [
+              "./config/modularize.yaml",
+              "./config/bundle.yaml",
+              "./config/swagger2.yaml",
+              "./config/logging.yaml"
+            ]
+          }
+        ],
+        "invariants": [
+          "No modifica el OpenAPI original de entrada; toda salida va a ./src ./dist ./docs.",
+          "Paths relativos se resuelven contra el cwd (directorio donde se ejecuta el CLI).",
+          "Arquitectura: domain no debe importar infrastructure; interface orquesta use-cases."
+        ]
+      }
+    },
+    "operations": {
+      "source": "declared",
+      "confidence": "high",
+      "value": {
+        "commands": [
+          {
+            "name": "modularize",
+            "summary": "Divide un OpenAPI monolítico en estructura modular con fix de refs y deduplicación.",
+            "inputs": [
+              {
+                "flag": "--build",
+                "meaning": "Archivo OpenAPI monolítico (yaml/json)",
+                "required": true
+              }
+            ],
+            "outputs": [
+              {
+                "path": "./src",
+                "guaranteed_after_success": true
+              }
+            ]
+          },
+          {
+            "name": "bundle",
+            "summary": "Consolida estructura modular en bundle OpenAPI 3 (opcionalmente remove-unused, validate, no-anchors).",
+            "inputs": [
+              {
+                "flag": "-i/--input",
+                "meaning": "Entrypoint modular",
+                "required": false,
+                "default": "./src/main.yaml"
+              },
+              {
+                "flag": "-o/--output",
+                "meaning": "Ruta del bundle",
+                "required": false,
+                "default": "./dist/bundle.yaml"
+              }
+            ],
+            "outputs": [
+              {
+                "path": "./dist/bundle.yaml",
+                "guaranteed_after_success": true
+              }
+            ]
+          },
+          {
+            "name": "docs",
+            "summary": "Genera documentación Markdown desde el bundle.",
+            "inputs": [
+              {
+                "flag": "-i/--input",
+                "meaning": "Bundle OpenAPI",
+                "required": false,
+                "default": "./dist/bundle.yaml"
+              },
+              {
+                "flag": "-o/--output",
+                "meaning": "Ruta Markdown",
+                "required": false,
+                "default": "./docs/api.md"
+              }
+            ],
+            "outputs": [
+              {
+                "path": "./docs/api.md",
+                "guaranteed_after_success": true
+              }
+            ]
+          },
+          {
+            "name": "swagger2",
+            "summary": "Convierte OpenAPI 3.x a Swagger 2.0.",
+            "inputs": [
+              {
+                "flag": "-i/--input",
+                "meaning": "Bundle OpenAPI 3",
+                "required": false,
+                "default": "./dist/bundle.yaml"
+              },
+              {
+                "flag": "-o/--output",
+                "meaning": "Ruta Swagger 2",
+                "required": false,
+                "default": "./dist/swagger2.yaml"
+              }
+            ],
+            "outputs": [
+              {
+                "path": "./dist/swagger2.yaml",
+                "guaranteed_after_success": true
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "ai_contract": {
+      "source": "declared",
+      "confidence": "high",
+      "value": {
+        "assumptions": [
+          "CLI ejecutado en Node >= 16",
+          "Herramientas externas pueden usarse (ej: redocly, widdershins) vía dependencias"
+        ],
+        "non_goals": [
+          "No modificar OpenAPI original",
+          "No soportar OpenAPI 3.1 aún"
+        ],
+        "constraints": [
+          "Domain layer must not import infrastructure layer.",
+          "CLI flags are the primary public API; evitar romper compatibilidad."
+        ],
+        "known_ambiguities": [
+          "Extracción de comandos desde código puede ser heurística si no está declarada aquí.",
+          "El manifest puede quedar desincronizado si se agregan flags sin actualizarlo."
+        ]
+      }
+    },
+    "inputs_outputs": {
+      "source": "declared",
+      "confidence": "high",
+      "value": {
+        "inputs": [
+          {
+            "kind": "config",
+            "path": "./config/modularize.yaml",
+            "required": false,
+            "source": "declared"
+          },
+          {
+            "kind": "config",
+            "path": "./config/bundle.yaml",
+            "required": false,
+            "source": "declared"
+          },
+          {
+            "kind": "config",
+            "path": "./config/swagger2.yaml",
+            "required": false,
+            "source": "declared"
+          },
+          {
+            "kind": "config",
+            "path": "./config/logging.yaml",
+            "required": false,
+            "source": "declared"
+          },
+          {
+            "kind": "manifest",
+            "path": "./ai/manifest.yml",
+            "required": false,
+            "source": "declared"
+          },
+          {
+            "kind": "openapi_spec",
+            "path": "(varies: --build)",
+            "required": true,
+            "source": "declared"
+          }
+        ],
+        "outputs": [
+          {
+            "path": "./src",
+            "description": "Estructura modular generada desde un OpenAPI monolítico",
+            "guaranteed_after_success": true,
+            "must_exist_before": false,
+            "idempotent": "yes (if clean output enabled)",
+            "source": "declared"
+          },
+          {
+            "path": "./dist/bundle.yaml",
+            "description": "Bundle OpenAPI 3 consolidado",
+            "guaranteed_after_success": true,
+            "must_exist_before": false,
+            "idempotent": "yes",
+            "source": "declared"
+          },
+          {
+            "path": "./docs/api.md",
+            "description": "Documentación Markdown generada",
+            "guaranteed_after_success": true,
+            "must_exist_before": false,
+            "idempotent": "yes",
+            "source": "declared"
+          },
+          {
+            "path": "./dist/swagger2.yaml",
+            "description": "Conversión a Swagger 2.0",
+            "guaranteed_after_success": true,
+            "must_exist_before": false,
+            "idempotent": "yes",
+            "source": "declared"
+          }
+        ]
+      }
+    },
+    "known_ambiguities": {
+      "source": "declared",
+      "confidence": "high",
+      "value": [
+        "Extracción de comandos desde código puede ser heurística si no está declarada aquí.",
+        "El manifest puede quedar desincronizado si se agregan flags sin actualizarlo."
+      ]
+    }
+  },
+  "inferred": {
+    "product": {
+      "source": "inferred",
+      "confidence": "medium",
+      "value": {
+        "name": "OpenAPI Builder",
+        "type": "node-cli",
+        "purpose": "CLI para modularizar contratos OpenAPI 3.x, generar bundle, docs Markdown y convertir a Swagger 2.0, siguiendo Clean Architecture (capas, puertos/adaptadores).\n"
+      }
+    },
+    "commands_detected": {
+      "source": "inferred",
+      "confidence": "medium",
+      "value": [
+        "modularize",
+        "bundle",
+        "docs",
+        "swagger2"
+      ]
+    }
+  },
+  "measured": {
+    "architecture": {
+      "source": "measured",
+      "confidence": "high",
+      "value": {
+        "layers": [
+          {
+            "layer": "interface",
+            "path": "bin/interface"
+          },
+          {
+            "layer": "application",
+            "path": "bin/application"
+          },
+          {
+            "layer": "domain",
+            "path": "bin/domain"
+          },
+          {
+            "layer": "infrastructure",
+            "path": "bin/infrastructure"
+          }
+        ],
+        "ports": "bin/application/ports",
+        "adapters": "bin/infrastructure/adapters"
+      }
+    },
+    "quality": {
+      "source": "measured",
+      "confidence": "high",
+      "value": {
+        "knip": {
+          "status": "fail",
+          "reason": "bin/main.js    knip.json  \u001b[90mRemove redundant \u001b[97mentry\u001b[90m pattern\u001b[39m",
+          "details_truncated": true,
+          "details": null,
+          "source": "measured"
+        },
+        "dependencyCruiser": {
+          "status": "pass",
+          "reason": "architecture boundary check passed",
+          "details_truncated": true,
+          "details": null,
+          "source": "measured"
+        }
+      }
+    },
+    "git": {
+      "source": "measured",
+      "confidence": "high",
+      "value": {
+        "source": "measured",
+        "included": false,
+        "dirty": null,
+        "branch": null,
+        "lastCommit": null,
+        "statusSummary": null,
+        "details": null
+      }
+    }
+  },
+  "execution_narrative": {
+    "source": "inferred",
+    "confidence": "medium",
+    "value": "When running openapi-builder modularize:\n- CLI parses flags and resolves cwd-relative paths.\n- Modularize use-case validates the input OpenAPI 3.x.\n- Domain services normalize response names, extract inline responses, deduplicate, split components and paths.\n- Writes a modular structure under ./src (main.yaml + components/ + paths/), fixing $ref as needed.\n\nWhen running openapi-builder bundle:\n- Takes modular entrypoint (default ./src/main.yaml).\n- Bundles into a single OpenAPI file (default ./dist/bundle.yaml), optionally removing unused components and validating.\n\nWhen running openapi-builder docs:\n- Uses the bundle as input (default ./dist/bundle.yaml) and generates Markdown docs (default ./docs/api.md).\n\nWhen running openapi-builder swagger2:\n- Converts bundle OpenAPI 3.x to Swagger 2.0 output (default ./dist/swagger2.yaml)."
+  },
+  "inventory": {
+    "source": "measured",
+    "confidence": "high",
+    "value": [
+      "bin/main.js",
+      "bin/interface/cli/",
+      "bin/interface/cli/cli.js",
+      "bin/interface/cli/CommandFactory.js",
+      "bin/interface/cli/DependencyContainer.js",
+      "bin/interface/menu/",
+      "bin/interface/presenters/",
+      "bin/application/ports/",
+      "bin/application/ports/IBundler.js",
+      "bin/application/ports/IDocGenerator.js",
+      "bin/application/ports/IDocumentRepository.js",
+      "bin/application/ports/ILogger.js",
+      "bin/application/ports/IPrompter.js",
+      "bin/application/ports/IValidator.js",
+      "bin/application/use-cases/",
+      "bin/application/use-cases/BundleUseCase.js",
+      "bin/application/use-cases/DowngradeSwagger2UseCase.js",
+      "bin/application/use-cases/GenerateDocsUseCase.js",
+      "bin/application/use-cases/ModularizeUseCase.js",
+      "bin/domain/entities/",
+      "bin/domain/entities/Component.js",
+      "bin/domain/entities/ComponentFile.js",
+      "bin/domain/entities/ModularizationModel.js",
+      "bin/domain/entities/OpenAPIDocument.js",
+      "bin/domain/entities/PathFile.js",
+      "bin/domain/services/",
+      "bin/domain/services/ComponentSplitterService.js",
+      "bin/domain/services/ModelValidator.js",
+      "bin/domain/services/ModularizationModelBuilder.js",
+      "bin/domain/services/NameNormalizerService.js",
+      "bin/domain/services/ParameterExtractorService.js",
+      "bin/domain/services/ReferenceFixerService.js",
+      "bin/domain/services/ReferenceResolver.js",
+      "bin/domain/services/ResponseDeduplicatorService.js",
+      "bin/domain/services/ResponseExtractorService.js",
+      "bin/domain/value-objects/",
+      "bin/domain/value-objects/FilePath.js",
+      "bin/domain/value-objects/StatusCode.js",
+      "bin/infrastructure/adapters/",
+      "bin/infrastructure/adapters/ApiSpecConverterDowngrader.js",
+      "bin/infrastructure/adapters/InquirerPrompter.js",
+      "bin/infrastructure/adapters/ModularizationWriter.js",
+      "bin/infrastructure/adapters/RedoclyBundler.js",
+      "bin/infrastructure/adapters/RedoclyValidator.js",
+      "bin/infrastructure/adapters/WiddershinsDocGenerator.js",
+      "bin/infrastructure/adapters/YamlDocumentRepository.js",
+      "bin/infrastructure/config/",
+      "bin/infrastructure/logging/",
+      "bin/infrastructure/utils/",
+      "config/bundle.yaml",
+      "config/logging.yaml",
+      "config/modularize.yaml",
+      "config/swagger2.yaml",
+      "scripts/ai-context.js",
+      "ai/manifest.yml",
+      "package.json",
+      ".dependency-cruiser.js"
+    ],
+    "truncated": true
+  },
+  "package": {
+    "source": "measured",
+    "confidence": "high",
+    "value": {
+      "name": "@apifactory/openapi-builder",
+      "version": "1.0.1",
+      "description": "CLI para trabajar con contratos OpenAPI 3: modularizar, generar bundle, documentación Markdown y convertir a Swagger 2.0.",
+      "bin": {
+        "openapi-builder": "bin/main.js"
+      },
+      "scripts": {
+        "modularize": "node bin/main.js modularize",
+        "bundle": "node bin/main.js bundle",
+        "docs": "node bin/main.js docs",
+        "swagger2": "node bin/main.js swagger2",
+        "test": "jest",
+        "test:watch": "jest --watch",
+        "test:coverage": "jest --coverage",
+        "test:integration": "jest tests/integration",
+        "test:unit": "jest tests/unit",
+        "test:ci": "jest --ci --coverage --maxWorkers=2"
+      },
+      "dependenciesTop": [
+        "@redocly/cli",
+        "api-spec-converter",
+        "chalk",
+        "commander",
+        "inquirer",
+        "prompts",
+        "widdershins"
+      ],
+      "devDependenciesTop": [
+        "@types/jest",
+        "dependency-cruiser",
+        "jest",
+        "js-yaml",
+        "knip",
+        "madge"
+      ]
+    }
+  }
+}

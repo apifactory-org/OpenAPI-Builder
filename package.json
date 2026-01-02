@@ -1,16 +1,31 @@
 {
-  "name": "openapi-builder",
-  "version": "1.0.0",
+  "name": "@apifactory/openapi-builder",
+  "version": "1.0.1",
   "description": "CLI para trabajar con contratos OpenAPI 3: modularizar, generar bundle, documentación Markdown y convertir a Swagger 2.0.",
   "type": "commonjs",
+  "publishConfig": {
+    "access": "public"
+  },
   "bin": {
     "openapi-builder": "bin/main.js"
   },
+  "files": [
+    "bin/",
+    "config/",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "modularize": "node bin/main.js modularize",
     "bundle": "node bin/main.js bundle",
     "docs": "node bin/main.js docs",
-    "swagger2": "node bin/main.js swagger2"
+    "swagger2": "node bin/main.js swagger2",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:integration": "jest tests/integration",
+    "test:unit": "jest tests/unit",
+    "test:ci": "jest --ci --coverage --maxWorkers=2"
   },
   "keywords": [
     "oas3",
@@ -32,8 +47,50 @@
     "chalk": "^4.1.2",
     "commander": "12.1.0",
     "inquirer": "8.2.6",
-    "js-yaml": "4.1.0",
     "prompts": "^2.4.2",
     "widdershins": "4.0.1"
+  },
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "dependency-cruiser": "^17.3.5",
+    "jest": "^30.2.0",
+    "js-yaml": "^4.1.1",
+    "knip": "^5.77.1",
+    "madge": "^8.0.0"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "coverageDirectory": "coverage",
+    "collectCoverageFrom": [
+      "bin/**/*.js",
+      "!bin/main.js",
+      "!bin/**/*.test.js",
+      "!bin/test-entities.js"
+    ],
+    "testMatch": [
+      "**/tests/**/*.test.js"
+    ],
+    "setupFilesAfterEnv": [
+      "<rootDir>/tests/setup.js"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 50,
+        "functions": 50,
+        "lines": 50,
+        "statements": 50
+      }
+    },
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "/dist/",
+      "/coverage/",
+      "/api/",
+      "/src/",
+      "/docs/"
+    ],
+    "modulePathIgnorePatterns": [
+      "<rootDir>/tests/output/"
+    ]
   }
 }

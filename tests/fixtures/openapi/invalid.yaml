@@ -1,0 +1,4 @@
+# OpenAPI inválido (sin versión)
+info:
+  title: Invalid API
+paths: {}

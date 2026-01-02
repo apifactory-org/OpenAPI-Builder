@@ -8,7 +8,7 @@
 #    Solo define la estructura física del proyecto (src/paths, src/components, etc.).
 #
 #  Este archivo es consumido por el comando:
-#    - oas3-modularize modularize
+#    -  openapi-builder modularize
 # ===================================================================
 
 # -------------------------------------------------------------------
@@ -156,6 +156,11 @@ affixes:
   # NOTA: Para responses, se recomienda dejar vacío ("") y usar
   #       responseNaming.ensureResponseSuffix en su lugar para
   #       mayor control sobre el formato de nombres.
+  #
+  # NOTA: Para parameters, se eliminan automáticamente los sufijos
+  #       semánticos (Header, Query, Path, Param) antes de aplicar
+  #       el sufijo configurado aquí.
+  #       Ejemplo: AuthorizationHeader → Authorization + Param → AuthorizationParam.yaml
   suffixes:
     schemas: "Schema"
     requestBodies: "Request"
@@ -164,6 +169,76 @@ affixes:
     examples: "Example"
     headers: "Header"
     securitySchemes: "Security"
+
+  # ─────────────────────────────────────────────────────────────────
+  # EXCLUSIONES DE SUFIJOS PARA SCHEMAS GENÉRICOS (#9)
+  # ─────────────────────────────────────────────────────────────────
+  # Lista de nombres de schemas que NO deben recibir sufijo.
+  # Útil para tipos muy básicos o genéricos que no necesitan "Schema".
+  #
+  # CASO DE USO:
+  #   Schemas ultra-genéricos como "text", "name", "value" pueden quedar
+  #   confusos con sufijo: "TextSchema", "NameSchema", "ValueSchema"
+  #
+  # COMPORTAMIENTO:
+  #   - Si el nombre del schema (en minúsculas) coincide con esta lista,
+  #     NO se le aplica el sufijo configurado en suffixes.schemas.
+  #   - Sí se aplica la naming convention (PascalCase, camelCase, etc.)
+  #
+  # EJEMPLOS:
+  #   text       → text.yaml      (sin sufijo)
+  #   name       → name.yaml      (sin sufijo)
+  #   value      → value.yaml     (sin sufijo)
+  #   User       → UserSchema.yaml (con sufijo, no está en la lista)
+  #
+  # PERSONALIZACIÓN:
+  #   Agrega o quita nombres según tu dominio de negocio.
+  #
+  excludeFromSuffix:
+    - "text"
+    - "name"
+    - "value"
+    - "datetime"
+    - "date"
+    - "time"
+    - "identifier"
+    - "code"
+    - "description"
+    - "amount"
+    - "quantity"
+    - "status"
+    - "type"
+    - "id"
+    - "reference"
+    - "number"
+    - "string"
+    - "boolean"
+    - "object"
+    - "array"
+
+  # ─────────────────────────────────────────────────────────────────
+  # SUFIJO ESPECIAL PARA ENUMS (#10)
+  # ─────────────────────────────────────────────────────────────────
+  # Detecta automáticamente schemas que son enums (enum + type: string)
+  # y les aplica un sufijo especial en lugar de "Schema".
+  #
+  # COMPORTAMIENTO:
+  #   - Si un schema tiene: { enum: [...], type: "string" }
+  #   - Y useEnumSuffix: true
+  #   - Se elimina "Values" del nombre y se agrega "Enum"
+  #
+  # EJEMPLOS:
+  #   datetimeTypeValues  → DatetimeTypeEnum.yaml  (elimina "Values", agrega "Enum")
+  #   partyTypeValues     → PartyTypeEnum.yaml     (elimina "Values", agrega "Enum")
+  #   statusValues        → StatusEnum.yaml        (elimina "Values", agrega "Enum")
+  #   UserType            → UserTypeEnum.yaml      (agrega "Enum")
+  #
+  # PERSONALIZACIÓN:
+  #   - useEnumSuffix: false → Los enums reciben el sufijo normal (Schema)
+  #   - enumSuffix: "Enum"   → Cambiar el sufijo (ej: "Type", "Enumeration")
+  #
+  useEnumSuffix: true
+  enumSuffix: "Enum"
 
 # -------------------------------------------------------------------
 # NORMALIZACIÓN DE NOMBRES DE RESPUESTAS HTTP
@@ -354,3 +429,10 @@ advanced:
   # Forzar estilo consistente en archivos generados (indentación YAML).
   # Valores válidos: 2, 4
   indent: 2
+
+# -------------------------------------------------------------------
+# VALIDACIÓN
+# -------------------------------------------------------------------
+validation:
+  # Habilitar/deshabilitar validación con Redocly después de modularizar
+  enabled: true

@@ -1,0 +1,22 @@
+{
+  "$schema": "https://unpkg.com/knip@latest/schema.json",
+  "entry": [
+    "bin/main.js"
+  ],
+  "project": [
+    "bin/**/*.js"
+  ],
+  "ignore": [
+    "bin/test-entities.js",
+    "test-output/**",
+    "src/**",
+    "dist/**",
+    "docs/**",
+    "coverage/**",
+    "**/*.test.*",
+    "**/__fixtures__/**"
+  ],
+  "ignoreBinaries": [],
+  "ignoreExportsUsedInFile": true,
+  "ignoreWorkspaces": []
+}

@@ -1,0 +1,8 @@
+// .vscode/settings.json
+{
+  "github.copilot.chat.codeGeneration.instructions": [
+    {
+      "file": "ai/context.md"
+    }
+  ]
+}

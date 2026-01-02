@@ -1,0 +1,157 @@
+context_schema_version: "1.1"
+generator_compatibility:
+  context_json_min_version: "1.1"
+  context_md_min_version: "1.1"
+
+product:
+  name: OpenAPI Builder
+  type: node-cli
+  purpose: >
+    CLI para modularizar contratos OpenAPI 3.x, generar bundle, docs Markdown
+    y convertir a Swagger 2.0, siguiendo Clean Architecture (capas, puertos/adaptadores).
+  audience:
+    - API teams
+    - platform engineering
+    - backend engineers
+  expected_outputs:
+    - path: ./src
+      description: Estructura modular generada desde un OpenAPI monolítico
+      guaranteed_after_success: true
+      idempotent: "yes (if clean output enabled)"
+      must_exist_before: false
+    - path: ./dist/bundle.yaml
+      description: Bundle OpenAPI 3 consolidado
+      guaranteed_after_success: true
+      idempotent: "yes"
+      must_exist_before: false
+    - path: ./docs/api.md
+      description: Documentación Markdown generada
+      guaranteed_after_success: true
+      idempotent: "yes"
+      must_exist_before: false
+    - path: ./dist/swagger2.yaml
+      description: Conversión a Swagger 2.0
+      guaranteed_after_success: true
+      idempotent: "yes"
+      must_exist_before: false
+
+authoritative_intent:
+  value: >
+    Este repo implementa un CLI orientado a “API contract operations”:
+    convertir una spec OpenAPI 3.x monolítica en estructura modular mantenible,
+    consolidar a bundle validado, generar documentación y exportar a Swagger 2.0
+    para compatibilidad legacy.
+
+operational_model:
+  declared_inputs:
+    - name: openapi_spec
+      type: file
+      formats: [yaml, yml, json]
+      required: true
+      used_by: [modularize]
+      examples: ["./api/openapi.yaml"]
+    - name: modular_entrypoint
+      type: file
+      formats: [yaml, yml]
+      required: false
+      used_by: [bundle]
+      default: "./src/main.yaml"
+    - name: bundle_input
+      type: file
+      formats: [yaml, yml]
+      required: false
+      used_by: [docs, swagger2]
+      default: "./dist/bundle.yaml"
+    - name: configs
+      type: folder
+      required: false
+      files:
+        - ./config/modularize.yaml
+        - ./config/bundle.yaml
+        - ./config/swagger2.yaml
+        - ./config/logging.yaml
+  invariants:
+    - "No modifica el OpenAPI original de entrada; toda salida va a ./src ./dist ./docs."
+    - "Paths relativos se resuelven contra el cwd (directorio donde se ejecuta el CLI)."
+    - "Arquitectura: domain no debe importar infrastructure; interface orquesta use-cases."
+
+operations:
+  commands:
+    - name: modularize
+      summary: "Divide un OpenAPI monolítico en estructura modular con fix de refs y deduplicación."
+      inputs:
+        - flag: --build
+          meaning: "Archivo OpenAPI monolítico (yaml/json)"
+          required: true
+      outputs:
+        - path: ./src
+          guaranteed_after_success: true
+    - name: bundle
+      summary: "Consolida estructura modular en bundle OpenAPI 3 (opcionalmente remove-unused, validate, no-anchors)."
+      inputs:
+        - flag: -i/--input
+          meaning: "Entrypoint modular"
+          required: false
+          default: "./src/main.yaml"
+        - flag: -o/--output
+          meaning: "Ruta del bundle"
+          required: false
+          default: "./dist/bundle.yaml"
+      outputs:
+        - path: ./dist/bundle.yaml
+          guaranteed_after_success: true
+    - name: docs
+      summary: "Genera documentación Markdown desde el bundle."
+      inputs:
+        - flag: -i/--input
+          meaning: "Bundle OpenAPI"
+          required: false
+          default: "./dist/bundle.yaml"
+        - flag: -o/--output
+          meaning: "Ruta Markdown"
+          required: false
+          default: "./docs/api.md"
+      outputs:
+        - path: ./docs/api.md
+          guaranteed_after_success: true
+    - name: swagger2
+      summary: "Convierte OpenAPI 3.x a Swagger 2.0."
+      inputs:
+        - flag: -i/--input
+          meaning: "Bundle OpenAPI 3"
+          required: false
+          default: "./dist/bundle.yaml"
+        - flag: -o/--output
+          meaning: "Ruta Swagger 2"
+          required: false
+          default: "./dist/swagger2.yaml"
+      outputs:
+        - path: ./dist/swagger2.yaml
+          guaranteed_after_success: true
+
+domain:
+  business_model: >
+    Herramienta para equipos de APIs: reduce fricción de mantenimiento y
+    conflictos Git en specs monolíticas y automatiza outputs de entrega.
+  data_entries:
+    - OpenAPI 3.x spec (yaml/json)
+    - config/*.yaml (modularize/bundle/swagger2/logging)
+  expected_product:
+    - Spec modular en ./src
+    - Bundle validado en ./dist
+    - Docs Markdown en ./docs
+    - Swagger2 opcional en ./dist
+
+ai_contract:
+  assumptions:
+    - "CLI ejecutado en Node >= 16"
+    - "Herramientas externas pueden usarse (ej: redocly, widdershins) vía dependencias"
+  non_goals:
+    - "No modificar OpenAPI original"
+    - "No soportar OpenAPI 3.1 aún"
+  constraints:
+    - "Domain layer must not import infrastructure layer."
+    - "CLI flags are the primary public API; evitar romper compatibilidad."
+  known_ambiguities:
+    - "Extracción de comandos desde código puede ser heurística si no está declarada aquí."
+    - "El manifest puede quedar desincronizado si se agregan flags sin actualizarlo."

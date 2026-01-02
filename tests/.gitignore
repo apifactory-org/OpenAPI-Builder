@@ -1,0 +1,6 @@
+# Ignorar outputs de tests
+output/
+*.log
+
+# Pero mantener estructura de carpetas
+!output/.gitkeep
