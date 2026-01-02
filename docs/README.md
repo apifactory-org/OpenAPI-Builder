@@ -116,20 +116,20 @@ bin/
 └── infrastructure/    # Adapters (Redocly, Widdershins, etc.)
 ```
 
-Ver [ARCHITECTURE.md](./docs/ARCHITECTURE.md) para más detalles.
+Ver [ARCHITECTURE.md](./ARCHITECTURE.md) para más detalles.
 
 ## 📖 Documentación
 
-- [Arquitectura](./docs/ARCHITECTURE.md) - Diseño y componentes del sistema
-- [Configuración](./docs/CONFIGURATION.md) - Opciones y personalización
-- [Contribución](./docs/CONTRIBUTING.md) - Guía para colaboradores
-- [Contexto para IA](./docs/AI_CONTEXT.md) - Información para herramientas de IA
+- [Arquitectura](./ARCHITECTURE.md) - Diseño y componentes del sistema
+- [Configuración](./CONFIGURATION.md) - Opciones y personalización
+- [Contribución](./CONTRIBUTING.md) - Guía para colaboradores
+- [Contexto para IA](./AI_CONTEXT.md) - Información para herramientas de IA
 
 ## 🤝 Contribuir
 
 Las contribuciones son bienvenidas. Por favor:
 
-1. Lee la [guía de contribución](./docs/CONTRIBUTING.md)
+1. Lee la [guía de contribución](./CONTRIBUTING.md)
 2. Respeta las reglas de arquitectura (domain no importa infrastructure)
 3. Mantén compatibilidad con los flags del CLI
 
