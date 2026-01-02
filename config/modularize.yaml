@@ -17,7 +17,7 @@
 paths:
   # Ruta del archivo OpenAPI principal MONOLÍTICO a modularizar.
   # Es el contrato "grande", normalmente en /api.
-  input: "./api/example.yaml"
+  input: "./api/petstore-oas3.0.0.yaml"
 
   # Carpeta donde se generará la estructura modular:
   #   - <modularizedOutput>/main.yaml (o el nombre configurado)

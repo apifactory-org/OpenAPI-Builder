@@ -39,7 +39,7 @@ npm install --save-dev @apifactory/openapi-builder
 Divide un OpenAPI monolítico en estructura modular con corrección de referencias y deduplicación.
 
 ```bash
-openapi-builder modularize --build ./api/openapi.yaml
+openapi-builder modularize --build ./api/petstore-oas3.0.0.yaml
 ```
 
 **Salida**: `./src/` con estructura modular (main.yaml + components/ + paths/)

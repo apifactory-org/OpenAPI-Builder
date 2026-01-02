@@ -44,7 +44,8 @@ coverage/
 build/
 example/
 examples/
-api/
+api/bian-example.yaml
+
 
 # ----------------------------------------
 # oas3-modularize Output
