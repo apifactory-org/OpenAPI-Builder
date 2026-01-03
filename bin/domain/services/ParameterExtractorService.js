@@ -7,11 +7,12 @@ const crypto = require("crypto");
  * Organiza parámetros por tipo (path/query/header/cookie)
  *
  * CORRECCIONES:
- * 1) Deduplicación por clave lógica (in + name), NO por “firma completa”.
+ * 1) Deduplicación por clave lógica (in + name), NO por "firma completa".
  *    Evita generar Username, Username1, Username2...
  * 2) Merge defensivo cuando hay varias definiciones del mismo parámetro.
  * 3) Validación conservadora para path params: solo se permiten si el path
  *    realmente contiene {param.name}. (evita refs inválidas tipo /user/login -> in:path username)
+ * 4) ✅ NUEVO: Nombres incluyen el tipo para evitar colisiones (UsernameQuery, UsernamePath)
  */
 class ParameterExtractorService {
   constructor() {
@@ -73,8 +74,10 @@ class ParameterExtractorService {
       const logicalKey = this.getLogicalKey(param, paramType);
 
       if (!logicalMap[logicalKey]) {
+        // ✅ FIX: Pasar paramType para generar nombre único
         const paramName = this.generateParameterName(
           param,
+          paramType,
           usedNamesByType[paramType]
         );
 
@@ -269,57 +272,56 @@ class ParameterExtractorService {
   }
 
   /**
-   * Merge defensivo de parámetros “equivalentes” (mismo in+name).
+   * Merge defensivo de parámetros "equivalentes" (mismo in+name).
    * - required: si alguno es true => true
-   * - schema: conservar el más “completo”
+   * - schema: conservar el más "completo"
    * - description: preferir la más larga/no vacía
    * - deprecated/explode/style/allowEmptyValue: preferir valores explícitos
    * - example/examples: preferir el que exista
    * - content: preferir el que exista
    */
-mergeParameter(baseParam, incomingParam, paramType) {
-  let a = this.cloneDeep(baseParam || {}); // <- era const, debe ser let
-  const b = incomingParam || {};
+  mergeParameter(baseParam, incomingParam, paramType) {
+    let a = this.cloneDeep(baseParam || {}); // <- era const, debe ser let
+    const b = incomingParam || {};
 
-  // Nombre e in: mantener consistencia con el base
-  a.name = a.name != null ? a.name : b.name;
-  a.in = a.in != null ? a.in : (paramType || b.in);
+    // Nombre e in: mantener consistencia con el base
+    a.name = a.name != null ? a.name : b.name;
+    a.in = a.in != null ? a.in : (paramType || b.in);
 
-  // required: si alguno true -> true
-  a.required = Boolean(a.required) || Boolean(b.required);
+    // required: si alguno true -> true
+    a.required = Boolean(a.required) || Boolean(b.required);
 
-  // description: preferir la más informativa
-  a.description = this.preferLongerString(a.description, b.description);
+    // description: preferir la más informativa
+    a.description = this.preferLongerString(a.description, b.description);
 
-  // deprecated
-  if (a.deprecated === undefined && b.deprecated !== undefined) a.deprecated = b.deprecated;
+    // deprecated
+    if (a.deprecated === undefined && b.deprecated !== undefined) a.deprecated = b.deprecated;
 
-  // style / explode / allowEmptyValue
-  if (a.style === undefined && b.style !== undefined) a.style = b.style;
-  if (a.explode === undefined && b.explode !== undefined) a.explode = b.explode;
-  if (a.allowEmptyValue === undefined && b.allowEmptyValue !== undefined) a.allowEmptyValue = b.allowEmptyValue;
+    // style / explode / allowEmptyValue
+    if (a.style === undefined && b.style !== undefined) a.style = b.style;
+    if (a.explode === undefined && b.explode !== undefined) a.explode = b.explode;
+    if (a.allowEmptyValue === undefined && b.allowEmptyValue !== undefined) a.allowEmptyValue = b.allowEmptyValue;
 
-  // schema: tomar el más completo
-  a.schema = this.pickMoreCompleteSchema(a.schema, b.schema);
+    // schema: tomar el más completo
+    a.schema = this.pickMoreCompleteSchema(a.schema, b.schema);
 
-  // example(s)
-  if (a.example === undefined && b.example !== undefined) a.example = b.example;
-  if (a.examples === undefined && b.examples !== undefined) a.examples = this.cloneDeep(b.examples);
+    // example(s)
+    if (a.example === undefined && b.example !== undefined) a.example = b.example;
+    if (a.examples === undefined && b.examples !== undefined) a.examples = this.cloneDeep(b.examples);
 
-  // content (OpenAPI permite parameter.content)
-  if (a.content === undefined && b.content !== undefined) a.content = this.cloneDeep(b.content);
+    // content (OpenAPI permite parameter.content)
+    if (a.content === undefined && b.content !== undefined) a.content = this.cloneDeep(b.content);
 
-  // headers/extension fields: merge superficial conservador
-  a = this.mergeExtensionsShallow(a, b);
+    // headers/extension fields: merge superficial conservador
+    a = this.mergeExtensionsShallow(a, b);
 
-  // path params en OAS deben ser required: true
-  if (String(paramType).toLowerCase() === "path") {
-    a.required = true;
+    // path params en OAS deben ser required: true
+    if (String(paramType).toLowerCase() === "path") {
+      a.required = true;
+    }
+
+    return a;
   }
-
-  return a;
-}
-
 
   pickMoreCompleteSchema(schemaA, schemaB) {
     if (!schemaA && schemaB) return this.cloneDeep(schemaB);
@@ -332,7 +334,7 @@ mergeParameter(baseParam, incomingParam, paramType) {
       const keys = Object.keys(s);
       pts += keys.length;
 
-      // Bonus por campos típicos de “completitud”
+      // Bonus por campos típicos de "completitud"
       if (s.format) pts += 2;
       if (s.enum) pts += 2;
       if (s.items) pts += 2;
@@ -347,7 +349,7 @@ mergeParameter(baseParam, incomingParam, paramType) {
 
     if (bScore > aScore) return this.cloneDeep(schemaB);
 
-    // Si puntúan igual, merge superficial (sin “inventar”)
+    // Si puntúan igual, merge superficial (sin "inventar")
     const merged = this.cloneDeep(schemaA);
     for (const [k, v] of Object.entries(schemaB)) {
       if (merged[k] === undefined && v !== undefined) merged[k] = this.cloneDeep(v);
@@ -384,29 +386,64 @@ mergeParameter(baseParam, incomingParam, paramType) {
   }
 
   /**
-   * Genera nombre para parámetro (sin duplicarlo por contador salvo colisión real
-   * por sanitización dentro del MISMO paramType).
+   * ✅ CAMBIO PRINCIPAL: Genera nombre para parámetro incluyendo el tipo
+   * 
+   * Patrón: {SanitizedName}{PascalCaseType}
+   * Ejemplos:
+   *   - username + query -> UsernameQuery
+   *   - username + path -> UsernamePath
+   *   - petId + path -> PetIdPath
+   *   - api_key + header -> ApiKeyHeader
+   * 
+   * Solo usa contador si hay colisión REAL dentro del mismo tipo
+   * (ej: X-Request-Id vs XRequestId ambos header)
    */
-  generateParameterName(param, usedNames) {
+  generateParameterName(param, paramType, usedNames) {
+    // 1. Sanitizar nombre base
     let baseName = String(param.name || "").trim();
     if (!baseName) baseName = "Param";
 
-    baseName = baseName.charAt(0).toUpperCase() + baseName.slice(1);
-    baseName = baseName.replace(/[^a-zA-Z0-9]/g, "");
+    // PascalCase del nombre
+    baseName = this.toPascalCase(baseName);
 
-    if (!baseName) baseName = "Param";
+    // 2. ✅ Agregar tipo al nombre (clave del fix)
+    const typeSuffix = this.toPascalCase(paramType);
+    let nameWithType = `${baseName}${typeSuffix}`;
 
-    let finalName = baseName;
-
-    // Solo si hay colisión real (ej. X-Request-Id vs XRequestId)
+    // 3. Solo si hay colisión real (raro), agregar contador
+    let finalName = nameWithType;
     let counter = 1;
     while (usedNames.has(finalName)) {
-      finalName = `${baseName}${counter}`;
+      finalName = `${nameWithType}${counter}`;
       counter++;
     }
 
     usedNames.add(finalName);
     return finalName;
+  }
+
+  /**
+   * ✅ NUEVO: Convertir string a PascalCase
+   * Ejemplos:
+   *   - "username" -> "Username"
+   *   - "pet_id" -> "PetId"
+   *   - "api-key" -> "ApiKey"
+   *   - "X-Request-ID" -> "XRequestId"
+   */
+  toPascalCase(str) {
+    if (!str) return "";
+    
+    return String(str)
+      // Reemplazar separadores con espacios
+      .replace(/[_-]+/g, " ")
+      // Capitalizar primera letra después de espacio
+      .replace(/\s+(.)/g, (match, char) => char.toUpperCase())
+      // Remover espacios
+      .replace(/\s+/g, "")
+      // Capitalizar primera letra
+      .replace(/^(.)/, (match, char) => char.toUpperCase())
+      // Remover caracteres no alfanuméricos
+      .replace(/[^a-zA-Z0-9]/g, "");
   }
 
   cloneDeep(value) {

@@ -165,7 +165,7 @@ affixes:
     schemas: "Schema"
     requestBodies: "Request"
     responses: ""
-    parameters: "Param"
+    parameters: ""
     examples: "Example"
     headers: "Header"
     securitySchemes: "Security"

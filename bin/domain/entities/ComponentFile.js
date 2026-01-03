@@ -85,7 +85,9 @@ class ComponentFile {
       }
 
       // Remover sufijos semánticos
-      cleanName = cleanName.replace(/(Header|Query|Path|Cookie|Param)$/i, "");
+      //cleanName = cleanName.replace(/(Header|Query|Path|Cookie|Param)$/i, "");
+      // Remover solo sufijo "Param" redundante
+      cleanName = cleanName.replace(/Param$/i, "");
     }
 
     // ✅ FIX: Detectar y remover sufijos existentes ANTES de aplicar nuevos
